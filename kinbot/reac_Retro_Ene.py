@@ -73,7 +73,7 @@ class RetroEne:
                         fix.append([i+1,j+1])
         if step < 12:
             new_dihs = geometry.new_ring_dihedrals(self.species, self.instance, step, 12)
-            for dih in range(len(self.instance)-3):
+            for dih in range(len(self.instance) - 3):
                 constraint = []
                 for i in range(4):
                     constraint.append(self.instance[dih+i] + 1)

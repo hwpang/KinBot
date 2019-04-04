@@ -95,6 +95,7 @@ def carry_out_reaction(rxn, step, command):
                                    geom=list([list(gi) for gi in geom]), 
                                    ppn=rxn.qc.ppn,
                                    qc_command=command)
+
     else:
         # use the pcobfgs algorithm for the geometry update
         if step < rxn.max_step:

@@ -1,5 +1,5 @@
 """
-Template to run ase to optimize a ts using Gaussian
+Template to run ase to optimize a ts using Sella 
 KinBot needs to pass to the template: 
 1. A label for the calculation
 2. The number of cores
@@ -8,6 +8,11 @@ KinBot needs to pass to the template:
 5. The geometry
 6. The Gaussian command
 
+1. A label for the calculation
+2. The number of cores
+3. The theory kwargs (level of theory, multiplicity, charge, etc.)
+4. The atom vector
+5. The geometry
 """
 
 import os, sys, re
@@ -16,22 +21,22 @@ import numpy as np
 
 import ase
 from ase import Atoms
-from ase.calculators.gaussian import Gaussian
+#from ase.calculators.gaussian import Gaussian
 from ase.db import connect
 
 
 label = '{label}'
 kwargs = {kwargs}
 
-Gaussian.command = '{qc_command} < PREFIX.com > PREFIX.log'
-calc = Gaussian(**kwargs)
+#Gaussian.command = '{qc_command} < PREFIX.com > PREFIX.log'
+#calc = Gaussian(**kwargs)
 
 atom = {atom}
 geom = {geom}
 
 
 mol = Atoms(symbols = atom, positions = geom)
-mol.set_calculator(calc)
+#mol.set_calculator(calc)
 try:
     e = mol.get_potential_energy() # use the Gaussian optimizer
     

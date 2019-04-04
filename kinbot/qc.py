@@ -36,7 +36,8 @@ class QuantumChemistry:
     """
     This class provides the link between KinBot and the qc code
     It choses the write options, submits the jobs and checks
-    the jobs for success or failure
+    the jobs for success or failure.
+    A lot of the functionalities are delegated to the templates.
     """
     
     def __init__(self,par):
@@ -57,6 +58,7 @@ class QuantumChemistry:
         self.irc_maxpoints = par.par['irc_maxpoints']
         self.irc_stepsize = par.par['irc_stepsize']
         self.qc_command = par.par['qc_command']
+        self.sella = par.par['sella']
         # sometimes there is no slurm feature at all
         if par.par['slurm_feature'] == '':
             self.slurm_feature = ''
@@ -179,7 +181,7 @@ class QuantumChemistry:
                 kwargs.update(irc_kwargs)
             return kwargs
 
-    def qc_hir(self,species, geom, rot_index, ang_index,fix):
+    def qc_hir(self, species, geom, rot_index, ang_index, fix):
         """ 
         Creates a constrained geometry optimization input and runs it. 
         wellorts: 0 for wells and 1 for saddle points
@@ -192,33 +194,26 @@ class QuantumChemistry:
         else:
             job = 'hir/' + str(species.chemid) + '_hir_' + str(rot_index) + '_' + str(ang_index).zfill(2)
 
-        kwargs = self.get_qc_arguments(job,species.mult,species.charge, ts = species.wellorts, step = 1, max_step = 1, high_level = 1, hir = 1)
-        kwargs['fix'] = fix
-        del kwargs['chk']
+        #kwargs = self.get_qc_arguments(job, species.mult, species.charge, ts=species.wellorts, step=1, max_step=1, high_level=1, hir=1)
+        #kwargs['fix'] = fix
+        #del kwargs['chk']
         
         atom = copy.deepcopy(species.atom)
         
-        dummy = geometry.is_linear(geom,species.bond)
-        if len(dummy) > 0: # add a dummy atom for each close to linear angle
-            for d in dummy:
-                atom = np.append(atom,['X'])
-                geom = np.concatenate((geom, [d]), axis=0)
-        dummy = [d.tolist() for d in dummy]
-        
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_hir.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job, 
-                                   kwargs=kwargs, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]), 
-                                   ppn=self.ppn, 
-                                   dummy=dummy, 
-                                   qc_command=self.qc_command)
+        atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
+       
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_hir.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job, 
+        #                           kwargs=kwargs, 
+        #                           atom=list(atom), 
+        #                           geom=list([list(gi) for gi in geom]), 
+        #                           ppn=self.ppn, 
+        #                           dummy=dummy, 
+        #                           qc_command=self.qc_command)
 
-        f_out = open('{}.py'.format(job),'w')
-        f_out.write(template)
-        f_out.close()
-        
+        assemble_ase_template(job, 'hir', self.sella, self.wellorts, fix, change=[], dummy=dummy, step=1, max_step=1):
+
         self.submit_qc(job)
 
         return 0
@@ -241,42 +236,34 @@ class QuantumChemistry:
         else:
             job = 'conf/' + str(species.chemid) + '_r' + str(conf_nr).zfill(self.zf) + '_' + str(scan_nr).zfill(self.zf)
         
-        kwargs = self.get_qc_arguments(job,species.mult,species.charge, ts=species.wellorts, step=1, max_step=1, hir=1)
-        
-        del kwargs['opt']
-        del kwargs['chk']
-        kwargs['method'] = 'am1'
-        kwargs['basis'] = ''
+        #kwargs = self.get_qc_arguments(job, species.mult, species.charge, ts=species.wellorts, step=1, max_step=1, hir=1)
+        #del kwargs['opt']
+        #del kwargs['chk']
+        #kwargs['method'] = 'am1'
+        #kwargs['basis'] = ''
         
         atom = copy.deepcopy(species.atom)
         
-        dummy = geometry.is_linear(geom,species.bond)
-        if len(dummy) > 0: # add a dummy atom for each close to linear angle
-            for d in dummy:
-                atom = np.append(atom,['X'])
-                geom = np.concatenate((geom, [d]), axis=0)
-        dummy = [d.tolist() for d in dummy]
+        atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
     
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ring_conf.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job,
-                                   kwargs=kwargs,
-                                   atom=list(atom),
-                                   geom=list([list(gi) for gi in geom]),
-                                   fix=fix,
-                                   change=change,
-                                   ppn=self.ppn,
-                                   dummy=dummy,
-                                   qc_command=self.qc_command)
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ring_conf.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job,
+        #                           kwargs=kwargs,
+        #                           atom=list(atom),
+        #                           geom=list([list(gi) for gi in geom]),
+        #                           fix=fix,
+        #                           change=change,
+        #                           ppn=self.ppn,
+        #                           dummy=dummy,
+        #                           qc_command=self.qc_command)
 
-        f_out = open('{}.py'.format(job),'w')
-        f_out.write(template)
-        f_out.close()
-        
+        assemble_ase_template(job, 'ringconf', self.sella, self.wellorts, fix, change, dummy=dummy, step=1, max_step=1):
+
         self.submit_qc(job)
         return 0
 
-    def qc_conf(self,species, geom, index=-1, ring = 0):
+    def qc_conf(self, species, geom, index=-1, ring=0):
         """ 
         Creates a geometry optimization input for the conformational search and runs it.
         qc: 'gauss' or 'nwchem'
@@ -293,38 +280,31 @@ class QuantumChemistry:
             else:
                 job = 'conf/' + str(species.chemid) + '_' + r + str(index).zfill(self.zf)
         
-        if species.wellorts:
-            kwargs = self.get_qc_arguments(job,species.mult,species.charge, ts = 1, step = 1, max_step = 1)
-        else:
-            kwargs = self.get_qc_arguments(job,species.mult,species.charge)
-            if self.qc == 'gauss':
-                kwargs['opt'] = 'CalcFC, Tight'
-        
-        del kwargs['chk']
+        #if species.wellorts:
+        #    kwargs = self.get_qc_arguments(job,species.mult,species.charge, ts = 1, step = 1, max_step = 1)
+        #else:
+        #    kwargs = self.get_qc_arguments(job,species.mult,species.charge)
+        #    if self.qc == 'gauss':
+        #        kwargs['opt'] = 'CalcFC, Tight'
+        #
+        #del kwargs['chk']
         
         atom = copy.deepcopy(species.atom)
         
-        dummy = geometry.is_linear(geom,species.bond)
-        if len(dummy) > 0: # add a dummy atom for each close to linear angle
-            for d in dummy:
-                atom = np.append(atom,['X'])
-                geom = np.concatenate((geom, [d]), axis=0)
-        dummy = [d.tolist() for d in dummy]
+        atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job,
-                                   kwargs=kwargs, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]),
-                                   ppn = self.ppn,
-                                   dummy = dummy,
-                                   qc_command=self.qc_command)
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job,
+        #                           kwargs=kwargs, 
+        #                           atom=list(atom), 
+        #                           geom=list([list(gi) for gi in geom]),
+        #                           ppn = self.ppn,
+        #                           dummy = dummy,
+        #                           qc_command=self.qc_command)
 
-        f_out = open('{}.py'.format(job),'w')
-        f_out.write(template)
-        f_out.close()
-        
+        assemble_ase_template(job, 'conf', self.sella, self.wellorts, fix=[], change=[], step=1, max_step=1):
+
         self.submit_qc(job)
 
         return 0
@@ -340,11 +320,11 @@ class QuantumChemistry:
         if mp2:
             job = str(species.chemid) + '_well_mp2'
         
-        kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
-        if self.qc == 'gauss':
-            kwargs['opt'] = 'CalcFC, Tight'
-        if mp2:
-            kwargs['method'] = 'mp2'
+        #kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
+        #if self.qc == 'gauss':
+        #    kwargs['opt'] = 'CalcFC, Tight'
+        #if mp2:
+        #    kwargs['method'] = 'mp2'
         
         atom = copy.deepcopy(species.atom)
         
@@ -355,20 +335,18 @@ class QuantumChemistry:
                 geom = np.concatenate((geom, [d]), axis=0)
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job,
-                                   kwargs=kwargs, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]),
-                                   ppn=self.ppn,
-                                   dummy = dummy,
-                                   qc_command=self.qc_command)
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job,
+        #                           kwargs=kwargs, 
+        #                           atom=list(atom), 
+        #                           geom=list([list(gi) for gi in geom]),
+        #                           ppn=self.ppn,
+        #                           dummy = dummy,
+        #                           qc_command=self.qc_command)
 
-        f_out = open('{}.py'.format(job),'w')
-        f_out.write(template)
-        f_out.close()
-        
+        assemble_ase_template(job, 'opt', self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
+
         self.submit_qc(job)
 
         return 0
@@ -382,12 +360,12 @@ class QuantumChemistry:
         if high_level:
             job = str(species.chemid) + '_fr_high'
 
-        kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
-        if self.qc == 'gauss':
-            kwargs['freq'] = 'freq'
-            kwargs['ioplist'] = ['7/33=1']
-        elif self.qc == 'nwchem':
-            kwargs['task'] = 'frequencies'
+        #kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
+        #if self.qc == 'gauss':
+        #    kwargs['freq'] = 'freq'
+        #    kwargs['ioplist'] = ['7/33=1']
+        #elif self.qc == 'nwchem':
+        #    kwargs['task'] = 'frequencies'
         
         atom = copy.deepcopy(species.atom)
         
@@ -401,15 +379,17 @@ class QuantumChemistry:
                 del kwargs['NoSymm']
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_freq_well.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job,
-                                   kwargs=kwargs, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]), 
-                                   ppn=self.ppn, 
-                                   dummy=dummy,
-                                   qc_command=self.qc_command)
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_freq_well.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job,
+        #                           kwargs=kwargs, 
+        #                           atom=list(atom), 
+        #                           geom=list([list(gi) for gi in geom]), 
+        #                           ppn=self.ppn, 
+        #                           dummy=dummy,
+        #                           qc_command=self.qc_command)
+
+        template = assemble_ase_template(job, self.sella, self.wellorts, fix=[], change=[], maxattemtp=2, step=1, max_step=1, irc=None, scan=0, high_level=0, hir=0, freq=1, mp2=0):
 
         f_out = open('{}.py'.format(job),'w')
         f_out.write(template)
@@ -428,16 +408,18 @@ class QuantumChemistry:
         if high_level:
             job += '_high'
 
-        kwargs = self.get_qc_arguments(job,species.mult,species.charge,ts = 1,step = 1,max_step=1,high_level = 1)
+        #kwargs = self.get_qc_arguments(job,species.mult,species.charge,ts = 1,step = 1,max_step=1,high_level = 1)
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc = self.qc))
-        template = open(template_file,'r').read()
-        template = template.format(label=job, 
-                                   kwargs=kwargs, 
-                                   atom=list(species.atom), 
-                                   geom=list([list(gi) for gi in geom]),
-                                   ppn = self.ppn,
-                                   qc_command=self.qc_command)
+        #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc = self.qc))
+        #template = open(template_file,'r').read()
+        #template = template.format(label=job, 
+        #                           kwargs=kwargs, 
+        #                           atom=list(species.atom), 
+        #                           geom=list([list(gi) for gi in geom]),
+        #                           ppn = self.ppn,
+        #                           qc_command=self.qc_command)
+
+        template = assemble_ase_template(job, self.sella, ts=1, fix=[], change=[], maxattemtp=2, step=1, max_step=1, irc=None, scan=0, high_level=1, hir=0, freq=0, mp2=0):
 
         f_out = open('{}.py'.format(job),'w')
         f_out.write(template)
@@ -447,7 +429,7 @@ class QuantumChemistry:
 
         return 0
 
-    def submit_qc(self,job, singlejob=1):
+    def submit_qc(self, job, singlejob=1):
         """
         Submit a job to the queue, unless the job:
             * has finished with Normal termination
@@ -510,7 +492,7 @@ class QuantumChemistry:
         return 1  # important to keep it 1, this is the natural counter of jobs submitted
 
 
-    def get_qc_geom(self,job, natom, wait=0, allow_error = 0):
+    def get_qc_geom(self, job, natom, wait=0, allow_error = 0):
         """
         Get the geometry from the ase database file.
         Returns it, with the following conditions about the status of the job.
@@ -558,7 +540,7 @@ class QuantumChemistry:
         else:
             return -1, geom
 
-    def get_second_to_last_geom(self,job, natom, wait=0, allow_error = 0):
+    def get_second_to_last_geom(self, job, natom, wait=0, allow_error = 0):
         """
         Get the geometry from the ase database file.
         Returns it, with the following conditions about the status of the job.
@@ -609,7 +591,7 @@ class QuantumChemistry:
         else:
             return -1, geom
 
-    def get_qc_freq(self,job, natom, wait=0, allow_error = 0):
+    def get_qc_freq(self, job, natom, wait=0, allow_error = 0):
         """
         Get the frequencies from the ase database file
         If wait is set to 1, it will wait for the job to finish.
@@ -645,7 +627,7 @@ class QuantumChemistry:
 
         return 0, freq
 
-    def get_qc_energy(self,job, wait=0):
+    def get_qc_energy(self, job, wait=0):
         """
         Read the last energy from a job. 
         For Gaussian currently works for DFT and HF only.
@@ -687,7 +669,7 @@ class QuantumChemistry:
 
 
 
-    def get_qc_zpe(self,job, wait=1):
+    def get_qc_zpe(self, job, wait=1):
         """
         Read the zero point energy. 
         If wait is set to 1 (default), it will wait for the job to finish.
@@ -715,7 +697,7 @@ class QuantumChemistry:
         
         return 0, zpe
 
-    def read_qc_hess(self,job, natom):
+    def read_qc_hess(self, job, natom):
         """
         Read the hessian of a gaussian chk file
         """
@@ -737,7 +719,7 @@ class QuantumChemistry:
             with open(fchk) as f:
                 lines = f.read().split('\n')
             
-            nvals = 3*natom * (3 * natom +1) / 2
+            nvals = 3 * natom * (3 * natom + 1) / 2
 
             for index, line in enumerate(reversed(lines)):
                 if re.search('Cartesian Force Constants', line) != None:
@@ -755,7 +737,7 @@ class QuantumChemistry:
                     break
         return hess
 
-    def is_in_database(self,job):
+    def is_in_database(self, job):
         """
         Checks if the current job is in the database:
         """
@@ -773,7 +755,7 @@ class QuantumChemistry:
         
         return 1
 
-    def check_qc(self,job):
+    def check_qc(self, job):
         """
         Checks the status of the qc job.
         """
@@ -826,3 +808,177 @@ class QuantumChemistry:
         else: 
             return 0
             
+
+    def sellify(self, fix, change):
+        """
+        Provide the constraints in a Sella format.
+        """
+
+        constraints = {'fix': [], 'bonds': [], 'angles': [], 'dihedrals': []}  # fix is different for sella than for kinbot
+        for f in fix:
+            if len(f) == 2:  # bond
+                constraints['bonds'].append((f[0], f[1]))  # numbering starts at zero or one? TODO
+            if len(f) == 3:  # angle
+                constraints['angles'].append((f[0], f[1], f[2]))  # numbering starts at zero or one? TODO
+            if len(f) == 4:  # dihedral
+                constraints['angles'].append((f[0], f[1], f[2], f[3]))  # numbering starts at zero or one? TODO
+
+        for f in change:
+            if len(f) == 3:  # bond
+                constraints['bonds'].append((f[0], f[1]), f[2])  # numbering starts at zero or one? TODO
+            if len(f) == 4:  # angle
+                constraints['angles'].append((f[0], f[1], f[2]), f[3])  # numbering starts at zero or one? TODO
+            if len(f) == 5:  # dihedral
+                constraints['angles'].append((f[0], f[1], f[2], f[3]), f[4])  # numbering starts at zero or one? TODO
+
+        return constraints
+
+
+    def assemble_ase_template(self, job, task, sella, ts, fix, change, dummy, step=0, max_step=0):
+        """
+        Assemble the template for an ASE.
+        task can be:
+        - min - minimization
+        - saddle - first order saddle point search
+        - irc - intrinsic reaction coordinate
+        constraints holds the goemtry parameters that need to be fixed or changed+fixed
+        Parts:
+        header
+        translation part to the given qc package
+        task specific part
+        database
+        """
+
+        maxattempt = 2
+        method = self.method
+        delchk = 0
+        delopt = 0
+       
+        if task == 'hir':
+            delchk = 1
+        elif task == 'ringconf':
+            delchk=1
+            delopt = 1
+            method = 'am1'
+            basis = ''
+        elif task == 'conf':
+            delchk = 1
+
+        
+
+            ircprod_qc = pkg_resources.resource_filename('tpl', 'ase_ircprod_{qc}.py.tpl'.format(qc = self.qc))
+            constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
+
+        header = pkg_resources.resource_filename('tpl', 'ase_header.py.tpl')
+        with open(header) as f:
+            tpl_header = f.read()
+
+        qc_translate =pkg_resources.resource_filename('tpl', 'ase_{qc}_translate.py.tpl'.format(qc = self.qc)) 
+        with open(qc_translate) as f:
+            tpl_translate = f.read()
+
+        if not sella and self.qc == 'gauss':
+            qc_translate_qc = pkg_resources.resource_filename('tpl', 'ase_{qc}_translate_{qc}.py.tpl'.format(qc = self.qc))
+            with open(qc_translate_qc) as f:
+                tpl_qc = f.read()
+
+        calc = pkg_resources.resource_filename('tpl', 'ase_calc.py.tpl')
+        with open(calc) as f:
+            tpl_calc = f.read()        
+            
+        qc_read = pkg_resources.resource_filename('tpl', 'ase_{qc}_read.py.tpl'.format(qc = self.qc))
+        with open(qc_read) as f:
+            tpl_read = f.read()
+
+        if sella:
+            task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.py.tpl')
+            with open(task_sella) as f:
+                tpl_task = f.read()
+        elif self.qc == 'gauss':
+            task_qc = pkg_resources.resource_filename('tpl', 'ase_task_{qc}.py.tpl'.format(qc = self.qc))
+            with open(task_qc) as f:
+                tpl_task = f.read()
+
+        if irc:
+
+        if scan:
+
+        if hir:
+
+        done = pkg_resources.resource_filename('tpl', 'ase_done.py.tpl'.format(qc = self.qc))
+        with open(done) as f:
+            tpl_done = f.read()
+
+        if task == 0 and sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        if task == 0 and not sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        if task == 1 and sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        if task == 1 and not sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        if task == 2 and sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        if task == 2 and not sella:
+            template = tpl_header + tpl_translate + tpl_calc + 
+
+        constraints = sellify(fix, change)
+
+        template = template.format(label=job, 
+                                   atom=list(atom), 
+                                   geom=list([list(gi) for gi in geom])) 
+                                   ppn=self.ppn,
+                                   mult=self.mult,
+                                   charge=self.charge,
+                                   step=step,
+                                   max_step=max_step,
+                                   method=method,
+                                   basis=self.basis,
+                                   job=job,
+                                   ts=ts,
+                                   scan=scan,
+                                   irc=irc,
+                                   high_level=self.high_level,
+                                   high_level_method=self.high_level_method,
+                                   high_level_basis=self.high_level_basis,
+                                   integral=self.integral,
+                                   hir=hir
+                                   irc_maxpoints=self.irc_maxpoints,
+                                   irc_stepsize=self.irc_stepsize,
+                                   qc=self.qc,
+                                   qc_command=self.qc_command,
+                                   maxattempt=maxattempt
+                                   constraints= !!
+                                   task=
+                                   freq=
+                                   prodopt=
+                                   delchk=delchk)
+
+
+        f_out = open('{}.py'.format(job),'w')
+        f_out.write(template)
+        f_out.close()
+
+        return 
+
+
+        def add_dummy(dummy, atom, geom, bond):
+            """
+            Add a dummy atom if needed to linear substructures
+            """
+
+            dummy = geometry.is_linear(geom, bond)
+
+            if len(dummy) > 0: # add a dummy atom for each close to linear angle
+                for d in dummy:
+                    atom = np.append(atom,['X'])
+                    geom = np.concatenate((geom, [d]), axis=0)
+            dummy = [d.tolist() for d in dummy]
+
+            return atom, geom, dummy
+

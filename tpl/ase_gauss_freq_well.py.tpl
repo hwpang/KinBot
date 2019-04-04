@@ -17,7 +17,6 @@ import numpy as np
 import ase
 from ase import Atoms
 from ase.calculators.gaussian import Gaussian
-from ase.vibrations import Vibrations
 from ase.db import connect
 from ase.io import read
 

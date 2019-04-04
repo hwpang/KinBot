@@ -129,6 +129,8 @@ class Parameters:
             'single_point_template': '',
             # if there is a key (e.g., Molpro), what it is to read L3
             "single_point_key": "MYENERGY",
+            # whether to use sella
+            "sella": 0,
 
             # COMPUTATIONAL ENVIRONEMNT
             # Which queuing system to use
