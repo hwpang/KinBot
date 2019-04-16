@@ -40,8 +40,8 @@ def carry_out_reaction(rxn, step, command):
         status = rxn.qc.check_qc(rxn.instance_name)
         if status != 'normal' and status != 'error': return step
 
-    kwargs = rxn.qc.get_qc_arguments(   rxn.instance_name, rxn.species.mult, rxn.species.charge, ts = 1,
-                                        step = step, max_step=rxn.max_step, scan = rxn.scan)
+    #kwargs = rxn.qc.get_qc_arguments(   rxn.instance_name, rxn.species.mult, rxn.species.charge, ts = 1,
+    #                                    step = step, max_step=rxn.max_step, scan = rxn.scan)
     
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
@@ -83,18 +83,20 @@ def carry_out_reaction(rxn, step, command):
         kwargs['release'] = release
 
         if step < rxn.max_step:
-            template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_search.py.tpl'.format(qc=rxn.qc.qc))
-            template = open(template_file,'r').read()
+            assemble_ase_template(rxn.instance_name, 'reac', self.sella, ts=0, fix=fix, change=change, dummy=[], step=step, max_step=rxn.max_step)
+            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_search.py.tpl'.format(qc=rxn.qc.qc))
+            #template = open(template_file,'r').read()
         else:
-            template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc=rxn.qc.qc))
-            template = open(template_file,'r').read()
+            assemble_ase_template(rxn.instance_name, 'ts', self.sella, ts=1, fix=[], change=[], dummy=[], step=step, max_step=rxn.max_step)
+            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc=rxn.qc.qc))
+            #template = open(template_file,'r').read()
         
-        template = template.format(label=rxn.instance_name, 
-                                   kwargs=kwargs, 
-                                   atom=list(rxn.species.atom), 
-                                   geom=list([list(gi) for gi in geom]), 
-                                   ppn=rxn.qc.ppn,
-                                   qc_command=command)
+        #template = template.format(label=rxn.instance_name, 
+        #                           kwargs=kwargs, 
+        #                           atom=list(rxn.species.atom), 
+        #                           geom=list([list(gi) for gi in geom]), 
+        #                           ppn=rxn.qc.ppn,
+        #                           qc_command=command)
 
     else:
         # use the pcobfgs algorithm for the geometry update
@@ -112,9 +114,9 @@ def carry_out_reaction(rxn, step, command):
             template = template.format(label = rxn.instance_name, kwargs = kwargs, atom = list(rxn.species.atom), 
                                        geom = list([list(gi) for gi in geom]), ppn = rxn.qc.ppn, qc_command=command)
     
-    f_out = open('{}.py'.format(rxn.instance_name),'w')
-    f_out.write(template)
-    f_out.close()
+    #f_out = open('{}.py'.format(rxn.instance_name),'w')
+    #f_out.write(template)
+    #f_out.close()
     
     step += rxn.qc.submit_qc(rxn.instance_name, 0)
     

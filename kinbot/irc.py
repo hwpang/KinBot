@@ -132,27 +132,32 @@ class IRC:
                 direction = 'Backward'
 
             odft = self.rxn.species.mult > 1
-            kwargs = self.rxn.qc.get_qc_arguments(irc_name,
-                                                  self.rxn.species.mult,
-                                                  self.rxn.species.charge,
-                                                  irc=direction.lower())
-            prod_kwargs = self.rxn.qc.get_qc_arguments(irc_name + '_prod', self.rxn.species.mult, self.rxn.species.charge)
-            if self.rxn.qc.qc == 'gauss':
-                prod_kwargs['opt'] = 'CalcFC, Tight, MaxCycle=10'
+            #kwargs = self.rxn.qc.get_qc_arguments(irc_name,
+            #                                      self.rxn.species.mult,
+            #                                      self.rxn.species.charge,
+            #                                      irc=direction.lower())
+            #prod_kwargs = self.rxn.qc.get_qc_arguments(irc_name + '_prod', self.rxn.species.mult, self.rxn.species.charge)
+            #if self.rxn.qc.qc == 'gauss':
+            #    prod_kwargs['opt'] = 'CalcFC, Tight, MaxCycle=10'
 
-            template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_irc.py.tpl'.format(qc=self.rxn.qc.qc))
-            template = open(template_file, 'r').read()
-            template = template.format(label=irc_name,
-                                       kwargs=kwargs,
-                                       prod_kwargs=prod_kwargs,
-                                       atom=list(self.rxn.species.atom),
-                                       geom=list([list(gi) for gi in geom]),
-                                       ppn=self.rxn.qc.ppn,
-                                       qc_command=self.par.par['qc_command'])
+            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_irc.py.tpl'.format(qc=self.rxn.qc.qc))
+            #template = open(template_file, 'r').read()
+            #template = template.format(label=irc_name,
+            #                           kwargs=kwargs,
+            #                           prod_kwargs=prod_kwargs,
+            #                           atom=list(self.rxn.species.atom),
+            #                           geom=list([list(gi) for gi in geom]),
+            #                           ppn=self.rxn.qc.ppn,
+            #                           qc_command=self.par.par['qc_command'])
 
-            f_out = open('{}.py'.format(irc_name), 'w')
-            f_out.write(template)
-            f_out.close()
+            #f_out = open('{}.py'.format(irc_name), 'w')
+            #f_out.write(template)
+            #f_out.close()
+
+            if direction == 'Forward':
+                self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.sella, self.wellorts, fix, change=[], dummy=dummy, step=1, max_step=1)
+            else:
+                self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.sella, self.wellorts, fix, change=[], dummy=dummy, step=1, max_step=1)
 
             self.rxn.qc.submit_qc(irc_name, 0)
 
