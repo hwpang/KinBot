@@ -65,121 +65,7 @@ class QuantumChemistry:
         else:
             self.slurm_feature = '#SBATCH -C ' + par.par['slurm_feature']
         
-    def get_qc_arguments(self, job, mult, charge, ts=0, step=0, max_step=0, irc=None, scan=0, high_level=0, hir=0):
-        """
-        Method to get the argument to pass to ase, which are then passed to the qc codes.
-        
-        Job: name of the job
-        
-        mult: multiplicity of the job
-        charge: charge of the job
-        
-        ts: 1 for transition state searches, 0 for wells and products
-        
-        step: Step number in the transition state search
-        
-        max_step: total number of necessary steps to get to the final transition state structure
-            This is different for every reaction family
-        
-        irc: direction of the irc, None if this is not an irc job
-        
-        scan: is this calculation part of a scan of a bond length to find a maximum energy
-        """
-        if self.qc == 'gauss':
-            # arguments for Gaussian
-            kwargs = {
-            'method': self.method, 
-            'basis': self.basis, 
-            'nprocshared' : self.ppn,
-            'mem' : '1000MW',
-            'chk' : job,
-            'label': job, 
-            'NoSymm' : 'NoSymm',
-            'multiplicity': mult,
-            'charge': charge,
-            'scf' : 'xqc',
-            }
-            if ts:
-                # arguments for transition state searches
-                kwargs['method'] = 'am1'
-                kwargs['basis'] = ''
-                
-                if step == 0:
-                    kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-                elif step < max_step: 
-                    kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-                    #kwargs['geom'] = 'AllCheck'
-                    kwargs['guess'] = 'Read'
-                else:
-                    kwargs['method'] = self.method
-                    kwargs['basis'] = self.basis
-                    kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
-                    kwargs['freq'] = 'freq'
-                    #kwargs['geom'] = 'AllCheck,NoKeepConstants'
-                    #kwargs['guess'] = 'Read'
-            else:
-                kwargs['freq'] = 'freq'
-            if scan or 'R_Addition_MultipleBond' in job:
-                    kwargs['method'] = 'mp2'
-                    kwargs['basis'] = self.basis
-            if irc is not None: 
-                #arguments for the irc calculations
-                kwargs['geom'] = 'AllCheck,NoKeepConstants'
-                kwargs['guess'] = 'Read'
-                kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format(irc, self.irc_maxpoints, self.irc_stepsize)
-                del kwargs['freq']
-            if high_level:
-                kwargs['method'] = self.high_level_method
-                kwargs['basis'] = self.high_level_basis
-                kwargs['freq'] = 'freq'
-                if len(self.integral) > 0:
-                    kwargs['integral'] = self.integral
-            if hir:
-                kwargs['opt'] = 'ModRedun,CalcFC'
-                del kwargs['freq']
-                if ts:
-                    kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
-            return kwargs
-            
-        if self.qc == 'nwchem':
-            # arguments for NWChem
-            odft = mult > 1
-            kwargs = {
-            'xc':self.method, 
-            'basis':self.basis, 
-            'scratch_dir' : 'scratch',
-            'permanent_dir' : './perm', 
-            'label' : job,
-            'mult' : mult,
-            'charge' : charge,
-            'odft' : odft,
-            'task' : 'optimize',
-            'driver' : 'tight',
-            'maxiter' : 100,
-            'clear' : 1,
-            'inhess' : 1
-            }
-            if ts:
-                # arguments for transition state searches
-                if step == max_step:
-                    kwargs['task'] = 'saddle'
-                else:
-                    kwargs['driver'] = 'default'
-            if irc is not None: 
-                # arguments for the irc calculations
-                irc_kwargs = {
-                'task' : 'mepgs',
-                'mepgs' : 1,
-                'maxmep' : 30,
-                'maxiter' : 20,
-                'inhess' : 2,
-                'xyz' : 1,
-                'evib' : 0.0005,
-                'stride' : 0.1,
-                'direction' : irc
-                }
-                kwargs.update(irc_kwargs)
-            return kwargs
+           
 
     def qc_hir(self, species, geom, rot_index, ang_index, fix):
         """ 
@@ -212,7 +98,9 @@ class QuantumChemistry:
         #                           dummy=dummy, 
         #                           qc_command=self.qc_command)
 
-        assemble_ase_template(job, 'hir', self.sella, self.wellorts, fix, change=[], dummy=dummy, step=1, max_step=1)
+     
+        calcargs = {'method'}
+        assemble_ase_template(job, atom, geom, self.wellorts, fix, change=[], dummy=dummy, 'min', self.sella, step=1, max_step=1)
 
         self.submit_qc(job)
 
