@@ -792,12 +792,14 @@ class QuantumChemistry:
         - min - minimization
         - saddle - first order saddle point search
         - irc - intrinsic reaction coordinate
+
         constraints holds the goemtry parameters that need to be fixed or changed+fixed
-        Parts:
-        header
-        translation part to the given qc package
-        task specific part
-        database
+
+        Parts of the template to assemble:
+        - header
+        - translation part to the given qc package
+        - task specific part
+        - database
         """
 
         maxattempt = 2
