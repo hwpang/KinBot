@@ -14,36 +14,21 @@ kwargs = {
 'scf' : 'xqc',
 }
 
-if {delchk}:
-   del kwargs['chk'] 
-
-if {ts}:
-    if {step} < {max_step}:
-        kwargs['method'] = 'am1'
-        kwargs['basis'] = ''
-    else:
-        kwargs['method'] = {method}
-        kwargs['basis'] = {basis}
-
-if {scan} or 'R_Addition_MultipleBond' in {job}:
-        kwargs['method'] = 'mp2'
-        kwargs['basis'] = {basis}
-
-if {irc} is not None: 
-    kwargs['method']:i {method}
+# level of theory keywords
+if {level} == 0:
+    kwargs['method']: 'am1' 
+    kwargs['basis']: ''
+if {level} == 1:
+    kwargs['method']: {method}
     kwargs['basis']: {basis}
-
-if {high_level}:
+if {level} == 2:
     kwargs['method'] = {high_level_method}
     kwargs['basis'] = {high_level_basis}
     if len({integral}) > 0:
         kwargs['integral'] = {integral}
-
-if {hir}:
-    kwargs['method'] = {high_level_method}
-    kwargs['basis'] = {high_level_basis}
-    if len({integral}) > 0:
-        kwargs['integral'] = {integral}
+if {level} == 'm': # if {scan} or 'R_Addition_MultipleBond' in {job}:
+    kwargs['method'] = 'mp2'
+    kwargs['basis']: {basis}
 
 dummy = {dummy}
 

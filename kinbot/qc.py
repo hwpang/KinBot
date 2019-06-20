@@ -99,7 +99,6 @@ class QuantumChemistry:
         #                           qc_command=self.qc_command)
 
      
-        calcargs = {'method'}
         assemble_ase_template(job, atom, geom, self.wellorts, fix, change=[], dummy=dummy, 'min', self.sella, step=1, max_step=1)
 
         self.submit_qc(job)
@@ -674,7 +673,7 @@ class QuantumChemistry:
         return constraints
 
 
-    def assemble_ase_template(self, job, task, sella, ts, fix, change, dummy, step=0, max_step=0):
+    def assemble_ase_template(self, job, task, level, fix, change, dummy, step=0, max_step=0):
         """
         Assemble the template for an ASE.
         job: name of the file
@@ -696,76 +695,12 @@ class QuantumChemistry:
         - database
 
         Tasks:
-        - minimization (+ constraint)
-        - saddle point search (+ constraint)
-        - frequency calculation
-        - irc
+        - min: minimization (+ constraint)
+        - saddle: saddle point search (+ constraint)
+        - freq: frequency calculation
+        - irc: irc
 
         """
-
-       
-        if task == 'hir':  # hindered rotor
-            maxattempt = 2  # how many times to restart the task
-            method = self.method 
-            chk = 0  # need or not chk file
-            opt = 1  # optmization
-            freq = 0  # frequency calculation
-            high_level = 1  
-        elif task == 'ringconf':  # ring conformer
-            maxattempt = 2  
-            method = self.method 
-            chk = 0  
-            opt = 1  
-            freq = 0
-            high_level = 1  
-            method = 'am1'
-            basis = ''
-        elif task == 'conf':  # conformer
-            maxattempt = 2  
-            method = self.method 
-            chk = 1  
-            opt = 1 
-            freq = 1  
-            high_level = 1  
-        elif task == 'min':  #  minimization
-            maxattempt = 2  
-            method = self.method 
-            chk = 1  
-            opt = 1  
-            freq = 1 
-            high_level = 0  
-        elif task == 'optm':  # mp2 minimization
-            maxattempt = 2  
-            method = 'mp2'
-            chk = 1  
-            opt = 1  
-            freq = 1  
-            high_level = 0  
-        elif task == 'optl2':  # L2 optimization
-            maxattempt = 2  
-            method = self.method 
-            chk = 1  
-            opt = 1 
-            freq = 1 
-            high_level = 0  
-            high_level = 1
-        elif task = 'tshl':
-            maxattempt = 2  # how many times to attempt to do the task (basically a restart option)
-            method = self.method 
-            delchk = 0  # delete the chk file
-            delopt = 0  #
-            freq = 0  # request frequency calculation
-            high_level = 0  
-            freq = 1
-            high_level = 1
-        elif task = 'ts':
-            maxattempt = 2  # how many times to attempt to do the task (basically a restart option)
-            method = self.method 
-            delchk = 1  # delete the chk file
-            delopt = 0  #
-            freq = 0  # request frequency calculation
-            high_level = 0  
-            freq = 1
 
         ircprod_qc = pkg_resources.resource_filename('tpl', 'ase_ircprod_{qc}.py.tpl'.format(qc = self.qc))
 

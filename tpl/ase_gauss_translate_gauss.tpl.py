@@ -5,23 +5,21 @@ ase_gauss_translate_sella
 """
 
 if {ts}:
-    if {step} == 0:
+    if {step} < {max_step}:
         kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-    elif {step} < {max_step}: 
-        kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-        kwargs['guess'] = 'Read'
     else:
         kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
         kwargs['freq'] = 'freq'
 else:
     kwargs['freq'] = 'freq'
+
 if {irc} is not None: 
     kwargs['geom'] = 'AllCheck,NoKeepConstants'
     kwargs['guess'] = 'Read'
     kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format({irc}, {irc_maxpoints}, {irc_stepsize})
     del kwargs['freq']
-if {high_level}:
-    kwargs['freq'] = 'freq'
+
+
 if {hir}:
     kwargs['opt'] = 'ModRedun,CalcFC'
     del kwargs['freq']
