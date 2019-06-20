@@ -97,8 +97,10 @@ class QuantumChemistry:
             'NoSymm' : 'NoSymm',
             'multiplicity': mult,
             'charge': charge,
-            'scf' : 'xqc',
+            'scf' : 'xqc'
             }
+            if self.par.par['guessmix'] == 1:
+                kwargs['guess'] = '(Mix,Always)'
             if ts:
                 # arguments for transition state searches
                 kwargs['method'] = 'am1'
@@ -113,8 +115,12 @@ class QuantumChemistry:
                 else:
                     kwargs['method'] = self.method
                     kwargs['basis'] = self.basis
-                    kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
-                    kwargs['freq'] = 'freq'
+                    if self.par.par['calcall_ts'] == 1:
+                        kwargs['opt'] = 'NoFreeze,TS,CalcAll,NoEigentest,MaxCycle=999'
+                        # not sending the frequency calculation for CalcAll
+                    else:
+                        kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
+                        kwargs['freq'] = 'freq'
                     #kwargs['geom'] = 'AllCheck,NoKeepConstants'
                     #kwargs['guess'] = 'Read'
             else:
@@ -214,6 +220,13 @@ class QuantumChemistry:
 
         assemble_ase_template(job, 'hir', self.sella, self.wellorts, fix, change=[], dummy=dummy, step=1, max_step=1)
 
+        dummy = geometry.is_linear(geom,species.bond)
+        if len(dummy) > 0: # add a dummy atom for each close to linear angle
+            for d in dummy:
+                atom = np.append(atom,['X'])
+                geom = np.concatenate((geom, [d]), axis=0)
+        dummy = [d.tolist() for d in dummy]
+        
         self.submit_qc(job)
 
         return 0
@@ -291,6 +304,13 @@ class QuantumChemistry:
         atom = copy.deepcopy(species.atom)
         
         atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
+
+        dummy = geometry.is_linear(geom,species.bond)
+        if len(dummy) > 0: # add a dummy atom for each close to linear angle
+            for d in dummy:
+                atom = np.append(atom,['X'])
+                geom = np.concatenate((geom, [d]), axis=0)
+        dummy = [d.tolist() for d in dummy]
         
         #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
         #template = open(template_file,'r').read()
@@ -328,6 +348,13 @@ class QuantumChemistry:
         atom = copy.deepcopy(species.atom)
         
         atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
+        dummy = geometry.is_linear(geom,species.bond)
+        if len(dummy) > 0: # add a dummy atom for each close to linear angle
+            for d in dummy:
+                atom = np.append(atom,['X'])
+                geom = np.concatenate((geom, [d]), axis=0)
+        dummy = [d.tolist() for d in dummy]
+        
         
         #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
         #template = open(template_file,'r').read()
@@ -345,6 +372,29 @@ class QuantumChemistry:
             assemble_ase_template(job, 'opthl', self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
         else:
             assemble_ase_template(job, 'opt', self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
+
+        job = str(species.chemid) + '_fr'
+        if high_level:
+            job = str(species.chemid) + '_fr_high'
+
+        kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
+        if self.qc == 'gauss':
+            kwargs['freq'] = 'freq'
+            kwargs['ioplist'] = ['7/33=1']
+        elif self.qc == 'nwchem':
+            kwargs['task'] = 'frequencies'
+        
+        atom = copy.deepcopy(species.atom)
+        
+        dummy = geometry.is_linear(geom,species.bond)
+        if len(dummy) > 0: # add a dummy atom for each close to linear angle
+            for d in dummy:
+                atom = np.append(atom,['X'])
+                geom = np.concatenate((geom, [d]), axis=0)
+            #switch on the symmetry of gaussian
+            if 'NoSymm' in kwargs:
+                del kwargs['NoSymm']
+        dummy = [d.tolist() for d in dummy]
 
         self.submit_qc(job)
 
@@ -411,8 +461,9 @@ class QuantumChemistry:
 
         template_file = pkg_resources.resource_filename('tpl', self.queuing + '_python.tpl')
         python_file = '{}.py'.format(job)
+        name = job.split('/')[-1]
         
-        python_template = open(template_head_file, 'r').read() 
+        #python_template = open(template_head_file, 'r').read() 
         python_template = open(template_head_file, 'r').read() + open(template_file, 'r').read()
 
         if self.queuing == 'pbs':
@@ -434,10 +485,18 @@ class QuantumChemistry:
         process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         out,err = process.communicate()
         out = out.decode()
-        if self.queuing == 'pbs':
-            pid = out.split('\n')[0].split('.')[0]
-        elif self.queuing == 'slurm':
-            pid = out.split('\n')[0].split()[3]
+        err = err.decode()
+        try:
+            if self.queuing == 'pbs':
+                pid = out.split('\n')[0].split('.')[0]
+            elif self.queuing == 'slurm':
+                pid = out.split('\n')[0].split()[3]
+        except:
+            msg = 'Something went wrong when submitting a job'
+            msg += 'This is the standard output:\n' + out
+            msg += '\nThis is the standard error:\n' + err
+            logging.error(msg)
+            sys.exit()
         self.job_ids[job] = pid
         
         return 1  # important to keep it 1, this is the natural counter of jobs submitted
@@ -693,7 +752,7 @@ class QuantumChemistry:
         Checks if the current job is in the database:
         """
         #open the database
-        rows = self.db.select(name = job)
+        rows = self.db.select(name=job)
         
         mol = None
         

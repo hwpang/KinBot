@@ -21,6 +21,7 @@
 Generic methods for the reaction families
 """
 
+import os
 import numpy as np
 import copy
 import time
