@@ -137,12 +137,14 @@ class QuantumChemistry:
             if high_level:
                 kwargs['method'] = self.high_level_method
                 kwargs['basis'] = self.high_level_basis
+                kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'  # to overwrite possible CalcAll
                 kwargs['freq'] = 'freq'
                 if len(self.integral) > 0:
                     kwargs['integral'] = self.integral
             if hir:
                 kwargs['opt'] = 'ModRedun,CalcFC'
-                del kwargs['freq']
+                if (not ts) or (ts and (not self.par.par['calcall_ts'])):
+                    del kwargs['freq']  
                 if ts:
                     kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
             return kwargs
