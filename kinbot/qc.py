@@ -861,6 +861,7 @@ class QuantumChemistry:
         database
         """
 
+        # TASKS AND OPTIONS
         # for ease of editing, the options are listed in alphabetical order 
         if task == 'opt':
             basis = self.basis 
@@ -934,6 +935,8 @@ class QuantumChemistry:
             maxattempt = 2
             method = self.method
 
+        # TEMPLATES 
+
         ircprod_qc = pkg_resources.resource_filename('tpl', 'ase_ircprod_{qc}.py.tpl'.format(qc = self.qc))
         constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
 
@@ -977,7 +980,8 @@ class QuantumChemistry:
         with open(done) as f:
             tpl_done = f.read()
 
-        #assemnble
+        #ASSEMBLE TEMPLATES
+
         if task == 0 and sella:
             template = tpl_header + tpl_translate + tpl_calc + 
 
@@ -998,7 +1002,7 @@ class QuantumChemistry:
 
         constraints = sellify(fix, change)
 
-        #substitute
+        #SUBSTITUTE TEMPLATES 
         template = template.format(label=job, 
                                    atom=list(atom), 
                                    geom=list([list(gi) for gi in geom])) 
