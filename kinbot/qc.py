@@ -861,51 +861,96 @@ class QuantumChemistry:
         database
         """
 
-        maxattempt = 2
-        method = self.method
-        delchk = 0
-        delopt = 0
-        freq = 0
-        high_level = 0
-       
-        if task == 'hir':
+        # for ease of editing, the options are listed in alphabetical order 
+        if task == 'opt':
+            basis = self.basis 
+            delchk = 0
+            delopt = 0
+            freq = 1
+            high_level = 0
+            maxattempt = 2
+            method = self.method
+
+        elif task == 'ts':
+            basis = self.basis 
+            delchk = 0
+            delopt = 0
+            freq = 1
+            high_level = 0
+            maxattempt = 2
+            method = self.method
+
+        elif task == 'hir':
+            basis = self.basis 
             delchk = 1
+            delopt = 0
+            freq = 0
+            high_level = 0
+            maxattempt = 2
+            method = self.method
+            
         elif task == 'ringconf':
-            delchk=1
-            delopt = 1
-            method = 'am1'
             basis = ''
-        elif task == 'conf':
             delchk = 1
+            delopt = 1
+            freq = 0
+            high_level = 0
+            maxattempt = 2
+            method = 'am1'
+
+        elif task == 'conf':
+            basis = self.basis 
+            delchk = 1
+            delopt = 1
             freq = 1
+            high_level = 0
+            maxattempt = 2
+            method = self.method
+
         elif task == 'optm':
+            basis = self.basis 
+            delchk = 0
+            delopt = 0
+            freq = 1
+            high_level = 0
+            maxattempt = 2
             method = 'mp2'
-            freq = 1
+            
         elif task == 'opthl':
+            basis = self.basis 
+            delchk = 0
+            delopt = 0
+            freq = 1
             high_level = 1
+            maxattempt = 2
+            method = self.method
+            
         elif task = 'tshl':
+            basis = self.basis 
+            delchk = 0
+            delopt = 0
             freq = 1
             high_level = 1
-        elif task = 'ts':
-            freq = 1
+            maxattempt = 2
+            method = self.method
 
         ircprod_qc = pkg_resources.resource_filename('tpl', 'ase_ircprod_{qc}.py.tpl'.format(qc = self.qc))
         constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
 
-        header = pkg_resources.resource_filename('tpl', 'ase_header.py.tpl')
+        header = pkg_resources.resource_filename('tpl', 'ase_header.tpl.py')
         with open(header) as f:
             tpl_header = f.read()
 
-        qc_translate =pkg_resources.resource_filename('tpl', 'ase_{qc}_translate.py.tpl'.format(qc = self.qc)) 
+        qc_translate =pkg_resources.resource_filename('tpl', 'ase_{qc}_translate.tpl.py'.format(qc = self.qc)) 
         with open(qc_translate) as f:
             tpl_translate = f.read()
 
         if not sella and self.qc == 'gauss':
-            qc_translate_qc = pkg_resources.resource_filename('tpl', 'ase_{qc}_translate_{qc}.py.tpl'.format(qc = self.qc))
+            qc_translate_qc = pkg_resources.resource_filename('tpl', 'ase_{qc}_translate_{qc}.tpl.py'.format(qc = self.qc))
             with open(qc_translate_qc) as f:
                 tpl_qc = f.read()
 
-        calc = pkg_resources.resource_filename('tpl', 'ase_calc.py.tpl')
+        calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
         with open(calc) as f:
             tpl_calc = f.read()        
             
