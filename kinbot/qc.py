@@ -764,7 +764,7 @@ class QuantumChemistry:
 
     def sellify(self, fix, change):
         """
-        Provide the constraints in a Sella format.
+        Provide the constraints in Sella format.
         Sella is zero-indexed, i.e., first atom is 0.
         """
 
@@ -791,109 +791,176 @@ class QuantumChemistry:
     def assemble_ase_template(self, job, task, sella, ts, fix, change, dummy, step=0, max_step=0):
         """
         Assemble the template for an ASE.
-        job: name of the file
-        task: optimization or irc
-        sella: whether to use sella or not
-        ts: whether minimum (0) or saddle (1)
-        fix: fixed coordinates
-        change: altered coordinates, which are also fixed to the new values
-        dummy:
-        step:
-        max_step:
-
-        Parts of the template to assemble:
-        - header
-        - translation part to the given qc package
-        - task specific part
-        - database
         """
 
-<<<<<<< HEAD
         # TASKS AND OPTIONS
-        # for ease of editing, the options are listed in alphabetical order 
-        if task == 'opt':
-            basis = self.basis 
-            delchk = 0
-            delopt = 0
-            freq = 1
-            high_level = 0
-            maxattempt = 2
+        # WELL
+        if task == 'well':
             method = self.method
-
-        elif task == 'ts':
             basis = self.basis 
-            delchk = 0
-            delopt = 0
+            integral = ''
+            opt = 1
+            order = 0
             freq = 1
-            high_level = 0
+            guess = 0
+            chk = 1
             maxattempt = 2
-            method = self.method
 
-        elif task == 'hir':
-            basis = self.basis 
-            delchk = 1
-            delopt = 0
-            freq = 0
-            high_level = 0
-            maxattempt = 2
-            method = self.method
-            
-        elif task == 'ringconf':
-            basis = ''
-            delchk = 1
-            delopt = 1
-            freq = 0
-            high_level = 0
-            maxattempt = 2
-            method = 'am1'
-
-        elif task == 'conf':
-            basis = self.basis 
-            delchk = 1
-            delopt = 1
-            freq = 1
-            high_level = 0
-            maxattempt = 2
-            method = self.method
-
-        elif task == 'optm':
-            basis = self.basis 
-            delchk = 0
-            delopt = 0
-            freq = 1
-            high_level = 0
-            maxattempt = 2
+        elif task == 'wellmp2':
             method = 'mp2'
-            
-        elif task == 'opthl':
             basis = self.basis 
-            delchk = 0
-            delopt = 0
+            integral = ''
+            opt = 1
+            order = 0
             freq = 1
-            high_level = 1
+            guess = 0
+            chk = 1
             maxattempt = 2
+
+        elif task == 'wellhl':
+            method = self.high_level_method
+            basis = self.high_level_basis
+            integral = self.integral
+            opt = 1
+            order = 0
+            freq = 1
+            guess = 0
+            chk = 1
+            maxattempt = 2
+
+        # TS
+        elif (task == 'ts' or task == 'tsmp2') and step == 0:
+            method = 'am1'
+            basis = '' 
+            integral = ''
+            opt = 1
+            order = 0
+            freq = 0
+            guess = 0
+            chk = 1
+            maxattempt = 2
+
+        elif (task == 'ts' or task == 'tsmp2') and step in range(1, max_step):
+            method = 'am1'
+            basis = '' 
+            integral = ''
+            opt = 1
+            order = 0
+            freq = 0
+            guess = 1
+            chk = 1
+            maxattempt = 2
+
+        elif task == 'ts' and step == max_step:
             method = self.method
-            
-        elif task = 'tshl':
             basis = self.basis 
-            delchk = 0
-            delopt = 0
+            integral = ''
+            opt = 1
+            order = 1
             freq = 1
-            high_level = 1
+            guess = 0
+            chk = 1
             maxattempt = 2
+
+        elif task == 'tsmp2' and step == max_step:
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            opt = 1
+            order = 1
+            freq = 1
+            guess = 0
+            chk = 1
+            maxattempt = 2
+
+        elif task == 'tshl':
+            method = self.high_level_method 
+            basis = self.high_level_basis
+            integral = self.integral
+            opt = 1
+            order = 1
+            freq = 1
+            guess = 0
+            chk = 1
+            maxattempt = 2
+
+        #CONFORMERS
+        elif task == 'wellconf':
             method = self.method
+            basis = self.basis 
+            integral = ''
+            opt = 1
+            order = 0
+            freq = 1
+            guess = 0
+            chk = 0
+            maxattempt = 2
+
+        elif task == 'tsconf':
+            method = self.method
+            basis = self.basis 
+            integral = ''
+            opt = 1
+            order = 1
+            freq = 1
+            guess = 0
+            chk = 0
+            maxattempt = 2
+           
+        elif task == 'ringconf':
+            method = 'am1'
+            basis = ''
+            integral = ''
+            opt = 0
+            order = 0
+            freq = 0
+            guess = 0
+            chk = 0
+            maxattempt = 1
+
+        # HINDERED ROTORS
+        elif task == 'wellhir':
+            method = self.high_level_method
+            basis = self.high_level_basis 
+            integral = self.integral
+            opt = 1
+            order = 0
+            freq = 0
+            guess = 0
+            chk = 0
+            maxattempt = 1
+ 
+        elif task == 'tshir':
+            method = self.high_level_method
+            basis = self.high_level_basis 
+            integral = self.integral
+            opt = 1
+            order = 1
+            freq = 0
+            guess = 0
+            chk = 0
+            maxattempt = 1
+
+        # IRC
+        elif task == 'irc':
+            method = self.method
+            basis = self.basis 
+            integral = ''
+            opt = 0
+            order = 0
+            freq = 0
+            guess = 1
+            chk = 1
+            maxattempt = 1
+
 
         # TEMPLATES 
-
-        ircprod_qc = pkg_resources.resource_filename('tpl', 'ase_ircprod_{qc}.py.tpl'.format(qc = self.qc))
-
-        constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
-
+        
         header = pkg_resources.resource_filename('tpl', 'ase_header.tpl.py')
         with open(header) as f:
             tpl_header = f.read()
 
-        qc_translate =pkg_resources.resource_filename('tpl', 'ase_{qc}_translate.tpl.py'.format(qc = self.qc)) 
+        qc_translate = pkg_resources.resource_filename('tpl', 'ase_{qc}_translate.tpl.py'.format(qc = self.qc)) 
         with open(qc_translate) as f:
             tpl_translate = f.read()
 
@@ -919,42 +986,26 @@ class QuantumChemistry:
             with open(task_qc) as f:
                 tpl_task = f.read()
 
-        if irc:
+        constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
+        with open(constraint) as f:
+            tpl_constraint = f.read()
 
-        if scan:
+            
 
-        if hir:
-
-        done = pkg_resources.resource_filename('tpl', 'ase_done.py.tpl'.format(qc = self.qc))
+        done = pkg_resources.resource_filename('tpl', 'ase_done.tpl.py'.format(qc = self.qc))
         with open(done) as f:
             tpl_done = f.read()
 
         #ASSEMBLE TEMPLATES
 
-        if task == 0 and sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
-
-        if task == 0 and not sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
-
-        if task == 1 and sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
-
-        if task == 1 and not sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
-
-        if task == 2 and sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
-
-        if task == 2 and not sella:
-            template = tpl_header + tpl_translate + tpl_calc + 
+        template = tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_read + tpl_task + tpl_done + tpl_read
 
         constraints = sellify(fix, change)
 
         #SUBSTITUTE TEMPLATES 
         template = template.format(label=job, 
                                    atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom])) 
+                                   geom=list([list(gi) for gi in geom])),
                                    ppn=self.ppn,
                                    mult=self.mult,
                                    charge=self.charge,

@@ -4,29 +4,25 @@ This only contains items that are in addition to
 ase_gauss_translate_sella
 """
 
-if {ts}:
-    if {step} == 0:
-        kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-    elif {step} < {max_step}: 
-        kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-        kwargs['guess'] = 'Read'
-    else:
-        kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
-        kwargs['freq'] = 'freq'
-else:
-    kwargs['freq'] = 'freq'
-if {irc} is not None: 
-    kwargs['geom'] = 'AllCheck,NoKeepConstants'
-    kwargs['guess'] = 'Read'
-    kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format({irc}, {irc_maxpoints}, {irc_stepsize})
-    del kwargs['freq']
-if {high_level}:
-    kwargs['freq'] = 'freq'
-if {hir}:
-    kwargs['opt'] = 'ModRedun,CalcFC'
-    del kwargs['freq']
+if not {sella}
+
     if {ts}:
-        kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
+        if {step} < {max_step}: 
+            kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
+        else:
+            kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
+
+    if {freq}:
+        kwargs['freq'] = 'freq'
+
+    if {irc}: 
+        kwargs['geom'] = 'AllCheck,NoKeepConstants'
+        kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format({irc}, {irc_maxpoints}, {irc_stepsize})
+
+    if {hir}:
+        kwargs['opt'] = 'ModRedun,CalcFC'
+        if {ts}:
+            kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
 
 
 
