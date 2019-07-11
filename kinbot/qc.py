@@ -45,6 +45,7 @@ class QuantumChemistry:
         self.qc = par.par['qc']
         self.method = par.par['method']
         self.basis = par.par['basis']
+        self.high_level = par.par['high_level']
         self.high_level_method = par.par['high_level_method']
         self.high_level_basis = par.par['high_level_basis']
         self.integral = par.par['integral']
@@ -59,6 +60,8 @@ class QuantumChemistry:
         self.irc_stepsize = par.par['irc_stepsize']
         self.qc_command = par.par['qc_command']
         self.sella = par.par['sella']
+        self.mult = par.par['mult']
+        self.charge = par.par['charge']
         # sometimes there is no slurm feature at all
         if par.par['slurm_feature'] == '':
             self.slurm_feature = ''
@@ -79,9 +82,7 @@ class QuantumChemistry:
         else:
             job = 'hir/' + str(species.chemid) + '_hir_' + str(rot_index) + '_' + str(ang_index).zfill(2)
        
-        assemble_ase_template(job, 'hir', species.atom, geom, species.wellorts, self.sella, fix, change=[])
-
-        self.submit_qc(job)
+        self.assemble_ase_template(job, 'hir', species, geom, species.wellorts, self.sella, fix, change=[])
 
         return 0
 
@@ -103,11 +104,10 @@ class QuantumChemistry:
         else:
             job = 'conf/' + str(species.chemid) + '_r' + str(conf_nr).zfill(self.zf) + '_' + str(scan_nr).zfill(self.zf)
         
-        assemble_ase_template(job, 'ringconf', species.atom, geom, species.wellorts, self.sella, fix, change, step=1, max_step=1):
-
-        self.submit_qc(job)
+        self.assemble_ase_template(job, 'ringconf', species, geom, species.wellorts, self.sella, fix, change)
 
         return 0
+
 
     def qc_conf(self, species, geom, index=-1, ring=0):
         """ 
@@ -125,9 +125,7 @@ class QuantumChemistry:
             else:
                 job = 'conf/' + str(species.chemid) + '_' + r + str(index).zfill(self.zf)
         
-        assemble_ase_template(job, 'conf', self.atom, geom, species.wellorts, self.sella, fix=[], change=[], step=1, max_step=1):
-
-        self.submit_qc(job)
+        self.assemble_ase_template(job, 'conf', species, geom, species.wellorts, self.sella, fix=[], change=[])
 
         return 0
 
@@ -142,22 +140,17 @@ class QuantumChemistry:
         if mp2:
             job = str(species.chemid) + '_well_mp2'
         
-        atom = copy.deepcopy(species.atom)
-        atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
-        
         if mp2:
-            assemble_ase_template(job, 'optmp2', self.atom, geom, species.wellorts, self.sella, fix=[], change=[], step=1, max_step=1)
+            self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
         elif high_level:
-            assemble_ase_template(job, 'opthl', self.atom, geom, species.wellorts, self.sella, fix=[], change=[], step=1, max_step=1)
+            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
         else:
-            assemble_ase_template(job, 'opt', self.atom, geom, species.wellorts, self.sella, fix=[], change=[], step=1, max_step=1)
-
-        self.submit_qc(job)
+            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
 
         return 0
 
 
-    def qc_opt_ts(self, species, geom, high_level = 0):
+    def qc_opt_ts(self, species, geom, high_level=0):
         """
         Creates a ts optimization input and runs it
         """
@@ -167,15 +160,13 @@ class QuantumChemistry:
             job += '_high'
 
         if high_level:
-            assemble_ase_template(job, 'opthl', self.atom, geom, species.wellorts, self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
+            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
         elif step == 0:
-            assemble_ase_template(job, 'preopt0', self.atom, geom, 0, self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
+            self.assemble_ase_template(job, 'preopt0', species, geom, 0, self.sella, ts=0, fix=[], change=[])
         elif step < max_step:
-            assemble_ase_template(job, 'preopt', self.atom, geom, 0, self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
+            self.assemble_ase_template(job, 'preopt', species, geom, 0, self.sella, ts=0, fix=[], change=[])
         else:
-            assemble_ase_template(job, 'opt', self.atom, geom, species.wellorts, self.sella, ts=0, fix=[], change=[], step=1, max_step=1):
-
-        self.submit_qc(job)
+            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, ts=0, fix=[])
 
         return 0
 
@@ -557,15 +548,31 @@ class QuantumChemistry:
                 return data['status']
         else: 
             return 0
-            
 
-    def assemble_ase_template(self, job, task, satom, geom, wellorts, sella, fix, change, step=0, max_step=0):
+
+    def add_dummy(self, atom, geom, bond):
+            """
+            Add a dummy atom if needed to linear substructures.
+            """
+
+            dummy = geometry.is_linear(geom, bond)
+
+            if len(dummy) > 0: # add a dummy atom for each close to linear angle
+                for d in dummy:
+                    atom = np.append(atom,['X'])
+                    geom = np.concatenate((geom, [d]), axis=0)
+            dummy = [d.tolist() for d in dummy]
+
+            return atom, geom, dummy
+       
+
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix, change):
         """
         Assemble the template for an ASE.
         """
 
-        atom = copy.deepcopy(satom)
-        atom, geom, dummy = add_dummy(dummy, atom, geom, species.bond) 
+        atom = copy.deepcopy(species.atom)
+        atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
 
         # TASKS AND OPTIONS
         if task == 'opt':
@@ -578,6 +585,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
+            singlejob = 0
 
         elif task == 'optmp2':
             method = 'mp2'
@@ -589,6 +597,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
+            singlejob = 0
 
         elif task == 'opthl':
             method = self.high_level_method
@@ -600,6 +609,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
+            singlejob = 0
 
         elif task == 'preopt0':
             method = 'am1'
@@ -611,6 +621,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
+            singlejob = 0
 
         elif task == 'preopt':
             method = 'am1'
@@ -622,6 +633,7 @@ class QuantumChemistry:
             guess = 1
             chk = 1
             maxattempt = 2
+            singlejob = 0
 
         #CONFORMERS
         elif task == 'conf':
@@ -634,6 +646,7 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 2
+            singlejob = 0
 
         elif task == 'ringconf':
             method = 'am1'
@@ -645,9 +658,10 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 1
+            singlejob = 0
 
         # HINDERED ROTORS
-        elif task == 'wellhir':
+        elif task == 'hir':
             method = self.high_level_method
             basis = self.high_level_basis 
             integral = self.integral
@@ -657,6 +671,7 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 2
+            singlejob = 0
  
         # IRC
         elif task == 'irc':
@@ -669,6 +684,7 @@ class QuantumChemistry:
             guess = 1
             chk = 1
             maxattempt = 1
+            singlejob = 1
 
 
         # TEMPLATES 
@@ -690,25 +706,25 @@ class QuantumChemistry:
         with open(calc) as f:
             tpl_calc = f.read()        
             
-        qc_read = pkg_resources.resource_filename('tpl', 'ase_{qc}_read.py.tpl'.format(qc = self.qc))
+        qc_read = pkg_resources.resource_filename('tpl', 'ase_{qc}_read.tpl.py'.format(qc = self.qc))
         with open(qc_read) as f:
             tpl_read = f.read()
 
         if sella:
-            task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.py.tpl')
+            task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.tpl.py')
             with open(task_sella) as f:
                 tpl_task = f.read()
         elif self.qc == 'gauss':
-            task_qc = pkg_resources.resource_filename('tpl', 'ase_task_{qc}.py.tpl'.format(qc = self.qc))
+            task_qc = pkg_resources.resource_filename('tpl', 'ase_task_{qc}.tpl.py'.format(qc = self.qc))
             with open(task_qc) as f:
                 tpl_task = f.read()
 
         if sella:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_sella_constraint.py.tpl')
+            constraint = pkg_resources.resource_filename('tpl', 'ase_sella_constraint.tpl.py')
             with open(constraint) as f:
                 tpl_constraint = f.read()
-        elif:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.py.tpl'.format(qc = self.qc))
+        else:
+            constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.tpl.py'.format(qc = self.qc))
             with open(constraint) as f:
                 tpl_constraint = f.read()
 
@@ -722,57 +738,40 @@ class QuantumChemistry:
         template = tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_constraint + tpl_task + tpl_done + tpl_read
 
         #SUBSTITUTE TEMPLATES 
+        #CalcAll TODO
+
         template = template.format(label=job, 
                                    atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom])),
+                                   geom=list([list(gi) for gi in geom]),
                                    ppn=self.ppn,
+                                   method=method,
+                                   basis=basis,
                                    mult=self.mult,
                                    charge=self.charge,
-                                   step=step,
-                                   max_step=max_step,
-                                   method=method,
-                                   basis=self.basis,
-                                   job=job,
-                                   ts=ts,
-                                   scan=scan,
-                                   irc=irc,
-                                   high_level=self.high_level,
-                                   high_level_method=self.high_level_method,
-                                   high_level_basis=self.high_level_basis,
-                                   integral=self.integral,
-                                   hir=hir
+                                   chk=chk,
+                                   guess=guess,
+                                   integral=integral,
+                                   dummy=dummy,
+                                   sella=self.sella,
+                                   order=order,
+                                   freq=freq,
+                                   task=task,
                                    irc_maxpoints=self.irc_maxpoints,
                                    irc_stepsize=self.irc_stepsize,
                                    qc=self.qc,
-                                   qc_command=self.qc_command,
-                                   maxattempt=maxattempt
                                    fix=fix,
                                    change=change,
-                                   task=task,
-                                   freq=freq,
-                                   opt=opt,
-                                   chk=chk)
+                                   maxattempt=maxattempt,
+                                   qc_command=self.qc_command)
 
 
         f_out = open('{}.py'.format(job),'w')
         f_out.write(template)
         f_out.close()
 
+        self.submit_qc(job, singlejob)
+
         return 
 
 
-        def add_dummy(dummy, atom, geom, bond):
-            """
-            Add a dummy atom if needed to linear substructures.
-            """
-
-            dummy = geometry.is_linear(geom, bond)
-
-            if len(dummy) > 0: # add a dummy atom for each close to linear angle
-                for d in dummy:
-                    atom = np.append(atom,['X'])
-                    geom = np.concatenate((geom, [d]), axis=0)
-            dummy = [d.tolist() for d in dummy]
-
-            return atom, geom, dummy
 

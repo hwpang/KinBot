@@ -3,9 +3,9 @@ Functions to read Gaussian output.
 """
 
 def read_geom(outfile, dummy):
-"""
-Read the final geometry from a Gaussian file.
-"""
+    """
+    Read the final geometry from a Gaussian file.
+    """
 
     with open(outfile) as f:
         lines = f.readlines()
