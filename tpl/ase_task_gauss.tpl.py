@@ -3,7 +3,7 @@ Template to define the task
 """
 
 
-for attempt in {maxattempt}: 
+for attempt in range({maxattempt}): 
     success = 0
     try:
         if attempt > 0:  # read the last geom
