@@ -187,7 +187,6 @@ class QuantumChemistry:
         else:
             if check == 'running': return 0
 
-
         try: 
             if self.par.par['queue_template'] == '':
                 template_head_file = pkg_resources.resource_filename('tpl', self.queuing + '.tpl')
