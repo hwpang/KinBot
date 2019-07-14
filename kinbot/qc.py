@@ -584,7 +584,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
 
         elif task == 'optmp2':
             method = 'mp2'
@@ -596,7 +596,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
 
         elif task == 'opthl':
             method = self.high_level_method
@@ -608,7 +608,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
 
         elif task == 'preopt0':
             method = 'am1'
@@ -620,7 +620,7 @@ class QuantumChemistry:
             guess = 0
             chk = 1
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
 
         elif task == 'preopt':
             method = 'am1'
@@ -645,7 +645,7 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
 
         elif task == 'ringconf':
             method = 'am1'
@@ -657,7 +657,7 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 1
-            singlejob = 0
+            singlejob = 1
 
         # HINDERED ROTORS
         elif task == 'hir':
@@ -670,7 +670,7 @@ class QuantumChemistry:
             guess = 0
             chk = 0
             maxattempt = 2
-            singlejob = 0
+            singlejob = 1
  
         # IRC
         elif task == 'irc':
@@ -683,7 +683,7 @@ class QuantumChemistry:
             guess = 1
             chk = 1
             maxattempt = 1
-            singlejob = 1
+            singlejob = 0
 
 
         # TEMPLATES 
