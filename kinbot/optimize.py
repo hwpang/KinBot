@@ -279,7 +279,7 @@ class Optimize:
             names.append(self.species.name + '_IRC_F_prod')
             names.append(self.species.name + '_IRC_R_prod')
             
-            if self.par.par['high_level'] == 1:
+            if self.par.par['rotor_scan'] == 1:
                 for count in range(self.species.hir.nrotation):
                     for rot_num in range(self.par.par['nrotation']):
                         names.append('hir/' + self.species.name + '_hir_' + str(count) + '_' + str(rot_num).zfill(2))
@@ -292,7 +292,7 @@ class Optimize:
         else:
             names.append(str(self.species.chemid) + '_well')
             names.append(str(self.species.chemid) + '_well_high')
-            if self.par.par['high_level'] == 1:
+            if self.par.par['rotor_scan'] == 1:
                 for count in range(self.species.hir.nrotation):
                     for rot_num in range(self.par.par['nrotation']):
                         names.append('hir/' + str(self.species.chemid) + '_hir_' + str(count) + '_' + str(rot_num).zfill(2))

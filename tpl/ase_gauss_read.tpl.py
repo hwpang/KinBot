@@ -59,4 +59,5 @@ def read_freq(outfile, atom):
                     f = np.array(line.split()[2:5]).astype(float)
                     freq.extend(f)
 
+    return freq
 
