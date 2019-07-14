@@ -80,14 +80,12 @@ def carry_out_reaction(rxn, step, command):
         
         #kwargs['release'] = release
 
-        if step < rxn.max_step:
+        if step == 0:
+            rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
+        elif step < rxn.max_step:
             rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
-            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_search.py.tpl'.format(qc=rxn.qc.qc))
-            #template = open(template_file,'r').read()
         else:
             rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change)
-            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc=rxn.qc.qc))
-            #template = open(template_file,'r').read()
         
     else:
         # use the pcobfgs algorithm for the geometry update
