@@ -452,9 +452,10 @@ class QuantumChemistry:
         if self.qc == 'gauss':
             
             fchk = str(job) + '.fchk'
-            #if not os.path.exists(fchk):
+            chk = str(job) + '.chk'
+            if os.path.exists(chk):
             #create the fchk file using formchk
-            os.system('formchk ' + job + '.chk > /dev/null')
+                os.system('formchk ' + job + '.chk > /dev/null')
             
             with open(fchk) as f:
                 lines = f.read().split('\n')

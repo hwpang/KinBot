@@ -291,6 +291,7 @@ class Optimize:
                         names.append('conf/' + self.species.name + '_r' + str(count).zfill(zf) + '_' + str(num).zfill(zf))
         else:
             names.append(str(self.species.chemid) + '_well')
+            names.append(str(self.species.chemid) + '_well_mp2')
             names.append(str(self.species.chemid) + '_well_high')
             if self.par.par['rotor_scan'] == 1:
                 for count in range(self.species.hir.nrotation):
