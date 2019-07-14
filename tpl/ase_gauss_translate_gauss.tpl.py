@@ -4,27 +4,28 @@ This only contains items that are in addition to
 ase_gauss_translate_sella
 """
 
-if {ts}:
-    if {step} < {max_step}:
-        kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
-    else:
+if not {sella}:
+
+    if {order}:
         kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
+    else:
+        kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
+
+    if {freq}:
         kwargs['freq'] = 'freq'
-else:
-    kwargs['freq'] = 'freq'
 
-if {irc} is not None: 
-    kwargs['geom'] = 'AllCheck,NoKeepConstants'
-    kwargs['guess'] = 'Read'
-    kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format({irc}, {irc_maxpoints}, {irc_stepsize})
-    del kwargs['freq']
+    if '{task}' == 'ircf':
+        kwargs['geom'] = 'AllCheck,NoKeepConstants'
+        kwargs['irc'] = 'RCFC,Forward,MaxPoints={irc_maxpoints},StepSize={irc_stepsize}'
+    if '{task}' == 'ircf':
+        kwargs['geom'] = 'AllCheck,NoKeepConstants'
+        kwargs['irc'] = 'RCFC,Reverse,MaxPoints={irc_maxpoints},StepSize={irc_stepsize}'
 
-
-if {hir}:
-    kwargs['opt'] = 'ModRedun,CalcFC'
-    del kwargs['freq']
-    if {ts}:
-        kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
+    if '{task}' == 'hir':
+        if {order}:
+            kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
+        else:
+            kwargs['opt'] = 'ModRedun,CalcFC'
 
 
 

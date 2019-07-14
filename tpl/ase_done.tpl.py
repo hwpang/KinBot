@@ -1,8 +1,6 @@
 """
 Put a DONE stamp on the calculations.
 """
-
-f = open(label + '.log','a')
-f.write('done\n')
-f.close()
+with open(label + '.log', 'w') as f:
+    f.write('done\n')
 

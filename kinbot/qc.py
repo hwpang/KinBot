@@ -735,34 +735,35 @@ class QuantumChemistry:
 
         #ASSEMBLE TEMPLATES
 
-        template = tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_constraint + tpl_task + tpl_done + tpl_read
+        template = tpl_read + tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_constraint + tpl_task + tpl_done 
 
         #SUBSTITUTE TEMPLATES 
         #CalcAll TODO
 
-        template = template.format(label=job, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]),
-                                   ppn=self.ppn,
-                                   method=method,
-                                   basis=basis,
-                                   mult=self.mult,
-                                   charge=self.charge,
-                                   chk=chk,
-                                   guess=guess,
-                                   integral=integral,
-                                   dummy=dummy,
-                                   sella=self.sella,
-                                   order=order,
-                                   freq=freq,
-                                   task=task,
-                                   irc_maxpoints=self.irc_maxpoints,
-                                   irc_stepsize=self.irc_stepsize,
-                                   qc=self.qc,
-                                   fix=fix,
-                                   change=change,
-                                   maxattempt=maxattempt,
-                                   qc_command=self.qc_command)
+        if 1:
+            template = template.format(label=job, 
+                                       atom=list(atom), 
+                                       geom=list([list(gi) for gi in geom]),
+                                       ppn=self.ppn,
+                                       method=method,
+                                       basis=basis,
+                                       mult=self.mult,
+                                       charge=self.charge,
+                                       chk=chk,
+                                       guess=guess,
+                                       integral=integral,
+                                       dummy=dummy,
+                                       sella=self.sella,
+                                       order=order,
+                                       freq=freq,
+                                       task=task,
+                                       irc_maxpoints=self.irc_maxpoints,
+                                       irc_stepsize=self.irc_stepsize,
+                                       qc=self.qc,
+                                       fix=fix,
+                                       change=change,
+                                       maxattempt=maxattempt,
+                                       qc_command=self.qc_command)
 
 
         f_out = open('{}.py'.format(job),'w')
