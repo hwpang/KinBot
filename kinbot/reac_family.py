@@ -78,27 +78,17 @@ def carry_out_reaction(rxn, step, command):
                 fix.append(c[:-1])
             change = []
         
-        
-        kwargs['fix'] = fix
-        kwargs['change'] = change
-        kwargs['release'] = release
+        #kwargs['release'] = release
 
         if step < rxn.max_step:
-            assemble_ase_template(rxn.instance_name, 'reac', self.sella, ts=0, fix=fix, change=change, dummy=[], step=step, max_step=rxn.max_step)
+            rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
             #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_search.py.tpl'.format(qc=rxn.qc.qc))
             #template = open(template_file,'r').read()
         else:
-            assemble_ase_template(rxn.instance_name, 'ts', self.sella, ts=1, fix=[], change=[], dummy=[], step=step, max_step=rxn.max_step)
+            rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change)
             #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc=rxn.qc.qc))
             #template = open(template_file,'r').read()
         
-        #template = template.format(label=rxn.instance_name, 
-        #                           kwargs=kwargs, 
-        #                           atom=list(rxn.species.atom), 
-        #                           geom=list([list(gi) for gi in geom]), 
-        #                           ppn=rxn.qc.ppn,
-        #                           qc_command=command)
-
     else:
         # use the pcobfgs algorithm for the geometry update
         if step < rxn.max_step:

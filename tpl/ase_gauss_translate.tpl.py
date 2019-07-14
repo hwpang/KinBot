@@ -1,6 +1,6 @@
 """
 Translation template to use ASE for Gaussian when using Sella.
-No keywords that effect forces or geometry should appear here.
+No keywords that affect forces or geometry should appear here.
 """
 
 kwargs = {{
