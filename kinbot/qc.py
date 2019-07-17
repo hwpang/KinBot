@@ -183,9 +183,9 @@ class QuantumChemistry:
 
         check = self.check_qc(job)
         if singlejob == 1:
-            if check != 0: return 0
+            if check != 0: return 0  # either normal or error termination, but is in database and done
         else:
-            if check == 'running': return 0
+            if check == 'running': return 0  # still running
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -499,6 +499,9 @@ class QuantumChemistry:
     def check_qc(self, job):
         """
         Checks the status of the qc job.
+        0: not in database (yet)
+        'running'
+        data['status'] can be 'normal' or 'error'
         """
         if self.qc == 'gauss':
             log_file = job + '.log'
@@ -573,118 +576,119 @@ class QuantumChemistry:
 
         atom = copy.deepcopy(species.atom)
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
+        wellorts = bool(wellorts)
 
         # TASKS AND OPTIONS
         if task == 'opt':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 1
+            opt = True
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = True
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
 
         elif task == 'optmp2':
             method = 'mp2'
             basis = self.basis 
             integral = ''
-            opt = 1
+            opt = True
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = True
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
 
         elif task == 'opthl':
             method = self.high_level_method
             basis = self.high_level_basis
             integral = self.integral
-            opt = 1
+            opt = True
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = True
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
 
         elif task == 'preopt0':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 1
+            opt = True
             order = 0
-            freq = 0
-            guess = 0
-            chk = 1
+            freq = False
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
 
         elif task == 'preopt':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 1
+            opt = True
             order = 0
-            freq = 0
-            guess = 1
-            chk = 1
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = False
 
         #CONFORMERS
         elif task == 'conf':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 1
+            opt = True
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 0
+            freq = True
+            guess = False
+            chk = False
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
 
         elif task == 'ringconf':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 0
+            opt = False
             order = 0
-            freq = 0
-            guess = 0
-            chk = 0
+            freq = False
+            guess = False
+            chk = False
             maxattempt = 1
-            singlejob = 1
+            singlejob = True
 
         # HINDERED ROTORS
         elif task == 'hir':
             method = self.high_level_method
             basis = self.high_level_basis 
             integral = self.integral
-            opt = 1
+            opt = True
             order = wellorts
-            freq = 0
-            guess = 0
-            chk = 0
+            freq = False
+            guess = False
+            chk = False
             maxattempt = 2
-            singlejob = 1
+            singlejob = True
  
         # IRC
         elif task == 'irc':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 0
+            opt = False
             order = 0
-            freq = 0
-            guess = 1
-            chk = 1
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 1
-            singlejob = 0
+            singlejob = False
 
 
         # TEMPLATES 
@@ -702,14 +706,6 @@ class QuantumChemistry:
             with open(qc_translate_qc) as f:
                 tpl_qc = f.read()
 
-        calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
-        with open(calc) as f:
-            tpl_calc = f.read()        
-            
-        qc_read = pkg_resources.resource_filename('tpl', 'ase_{qc}_read.tpl.py'.format(qc = self.qc))
-        with open(qc_read) as f:
-            tpl_read = f.read()
-
         if sella:
             task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.tpl.py')
             with open(task_sella) as f:
@@ -719,28 +715,14 @@ class QuantumChemistry:
             with open(task_qc) as f:
                 tpl_task = f.read()
 
-        if sella:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_sella_constraint.tpl.py')
-            with open(constraint) as f:
-                tpl_constraint = f.read()
-        else:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.tpl.py'.format(qc = self.qc))
-            with open(constraint) as f:
-                tpl_constraint = f.read()
-
-
-        done = pkg_resources.resource_filename('tpl', 'ase_done.tpl.py'.format(qc = self.qc))
-        with open(done) as f:
-            tpl_done = f.read()
-
         #ASSEMBLE TEMPLATES
 
-        template = tpl_read + tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_constraint + tpl_task + tpl_done 
+        template = tpl_header + tpl_translate + tpl_qc + tpl_task 
 
         #SUBSTITUTE TEMPLATES 
         #CalcAll TODO
 
-        if 1:
+        if 0:
             template = template.format(label=job, 
                                        atom=list(atom), 
                                        geom=list([list(gi) for gi in geom]),
@@ -770,9 +752,8 @@ class QuantumChemistry:
         f_out.write(template)
         f_out.close()
 
-        self.submit_qc(job, singlejob)
-
-        return 
+        # this will return the same number as submit_qc
+        return self.submit_qc(job, singlejob)
 
 
 

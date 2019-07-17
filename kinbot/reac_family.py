@@ -81,11 +81,11 @@ def carry_out_reaction(rxn, step, command):
         #kwargs['release'] = release
 
         if step == 0:
-            rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
         elif step < rxn.max_step:
-            rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
         else:
-            rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change)
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change)
         
     else:
         # use the pcobfgs algorithm for the geometry update
@@ -103,11 +103,7 @@ def carry_out_reaction(rxn, step, command):
             template = template.format(label = rxn.instance_name, kwargs = kwargs, atom = list(rxn.species.atom), 
                                        geom = list([list(gi) for gi in geom]), ppn = rxn.qc.ppn, qc_command=command)
     
-    #f_out = open('{}.py'.format(rxn.instance_name),'w')
-    #f_out.write(template)
-    #f_out.close()
-    
-    step += rxn.qc.submit_qc(rxn.instance_name, 0)
+    # step += rxn.qc.submit_qc(rxn.instance_name, 0)
     
     return step
     
