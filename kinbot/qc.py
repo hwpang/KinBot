@@ -673,7 +673,7 @@ class QuantumChemistry:
             singlejob = True
  
         # IRC
-        elif task == 'irc':
+        elif task[:3] == 'irc':
             method = self.method
             basis = self.basis 
             integral = ''

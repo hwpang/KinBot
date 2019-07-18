@@ -134,8 +134,8 @@ class IRC:
             odft = self.rxn.species.mult > 1
 
             if direction == 'Forward':
-                self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.rxn.species, geom, self.wellorts, self.sella, fix, change=[])
+                self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.rxn.species, geom, 0, self.par.par['sella'])
             else:
-                self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.rxn.species, geom, self.wellorts, self.sella, fix, change=[])
+                self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.rxn.species, geom, 0, self.par.par['sella'])
 
         return 0

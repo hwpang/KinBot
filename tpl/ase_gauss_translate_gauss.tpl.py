@@ -14,10 +14,10 @@ if not sella:
 
     if task == 'ircf':
         kwargs['geom'] = 'AllCheck,NoKeepConstants'
-        kwargs['irc'] = 'RCFC,Forward,MaxPoints=irc_maxpoints,StepSize=irc_stepsize'
+        kwargs['irc'] = 'RCFC,Forward,MaxPoints={{}},StepSize={{}}'.format(irc_maxpoints, irc_stepsize)
     if task == 'ircf':
         kwargs['geom'] = 'AllCheck,NoKeepConstants'
-        kwargs['irc'] = 'RCFC,Reverse,MaxPoints=irc_maxpoints,StepSize=irc_stepsize'
+        kwargs['irc'] = 'RCFC,Reverse,MaxPoints={{}},StepSize={{}}'.format(irc_maxpoints, irc_stepsize)
 
     if task == 'hir':
         if order:
