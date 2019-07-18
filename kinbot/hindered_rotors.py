@@ -198,7 +198,10 @@ class HIR:
                 X[i][j] = (1 - np.cos((j+1) * ai))
                 X[i][j+n_terms] = np.sin((j+1) * ai)
 
-        A = np.linalg.lstsq(X, np.array(ens))[0]
+        # FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
+        # To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
+        #
+        A = np.linalg.lstsq(X, np.array(ens), rcond=None)[0]
 
         for i, si in enumerate(status):
             if si == 1:

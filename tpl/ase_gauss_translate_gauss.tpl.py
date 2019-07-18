@@ -25,5 +25,7 @@ if not sella:
         else:
             kwargs['opt'] = 'ModRedun,CalcFC'
 
+    if fix:
+        kwargs['fix'] = fix
 
 
