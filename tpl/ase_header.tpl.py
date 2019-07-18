@@ -8,7 +8,7 @@ from ase import Atoms
 from ase.db import connect
 from ase.io import read
 from ase.optimize.pcobfgs import PCOBFGS
-from kinbot import readers.py
+from kinbot import reader_{qc}
 
 label = '{label}'
 atom = {atom}
@@ -21,8 +21,8 @@ method = '{method}'
 basis = '{basis}'
 mult = {mult}
 charge = {charge}
-chk = '{chk}'
-guess = '{guess}'
+chk = {chk}
+guess = {guess}
 integral = '{integral}'
 dummy = {dummy}
 sella = {sella}

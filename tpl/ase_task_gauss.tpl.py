@@ -1,7 +1,7 @@
 # Gaussian ASE calculator
 
 from ase.calculators.gaussian import Gaussian
-Gaussian.command = '{} < PREFIX.com > PREFIX.log'.format(qc_command)
+Gaussian.command = '{qc_command} < PREFIX.com > PREFIX.log'
 calc = Gaussian(**kwargs)
 
 mol.set_calculator(calc)
@@ -43,23 +43,23 @@ for ci in change:
 # ASE does not have access to geometries, ZPE and frequencies
 # KinBot's reader is needed
 
-for attempt in range({maxattempt}): 
+for attempt in range(maxattempt): 
     success = 0
     try:
         if attempt > 0:  # read the last geom
-            outfile = '{}.log'.format(label)
-            mol.positions = kinbot.readers.read_geom(qc, outfile, mol, dummy)
+            outfile = '{label}.log'
+            mol.positions = reader_{qc}.read_geom(outfile, mol, dummy)
 
         e = mol.get_potential_energy()
 
         #read the geometry from the output file
-        outfile = '{}.log'.format(label)
-        mol.positions = kinbot.readers.read_geom(qc, outfile, mol, dummy)
+        outfile = '{label}.log'
+        mol.positions = reader_{qc}.read_geom(outfile, mol, dummy)
 
         # read frequency and zpe if available:
-        if {freq}:
-            zpe = kinbot.readers.read_zpe(qc, outfile)
-            freq = kinbot.readers.read_freq(qc, outfile, atom)
+        if freq:
+            zpe = reader_{qc}.read_zpe(outfile)
+            freq = reader_{qc}.read_freq(outfile, atom)
 
         for d in dummy:  #remove the dummy atom before writing to the database
             mol.pop()
@@ -83,5 +83,5 @@ if success == 0:
     db.write(mol, name = label, data = {{'status' : 'error'}})
 
 
-with open(label + '.log', 'w') as f:
+with open(label + '.log', 'a') as f:
     f.write('done\n')

@@ -721,11 +721,11 @@ class QuantumChemistry:
 
         #SUBSTITUTE TEMPLATES 
         #CalcAll TODO
-
-        if 0:
+        
+        if 1:  # THIS IS JUST HERE WHILE TESTING, WILL NEED TO DELETE AND UNINDENT
             template = template.format(label=job, 
                                        atom=list(atom), 
-                                       geom=list([list(gi) for gi in geom]),
+                                       geom=[list(gi) for gi in geom], 
                                        ppn=self.ppn,
                                        method=method,
                                        basis=basis,

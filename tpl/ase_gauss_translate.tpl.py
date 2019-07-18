@@ -17,7 +17,7 @@ if chk:
     kwargs['chk'] = label
 if guess:
     kwargs['guess'] = 'Read'
-if len('integral') > 0:
+if len(integral) > 0:
     kwargs['integral'] = integral
 
 
