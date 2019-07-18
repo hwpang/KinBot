@@ -34,9 +34,8 @@ for attempt in range(maxattempt):
 
         for d in dummy:  #remove the dummy atom before writing to the database
             mol.pop()
- 
-        db = connect('kinbot.db')
 
+        db = connect('kinbot.db')
         if freq:
             db.write(mol,name = label,data={{'energy': e,'frequencies': np.asarray(freq), 'zpe':zpe, 'status' : 'normal'}})
         else:

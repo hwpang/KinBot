@@ -28,4 +28,10 @@ if not sella:
     if fix:
         kwargs['fix'] = fix
 
+    if release:
+        kwargs['release'] = release
+
+    if change:
+        kwargs['change'] = change
+
 

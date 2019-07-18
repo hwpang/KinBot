@@ -44,6 +44,7 @@ def carry_out_reaction(rxn, step, command):
     #kwargs = rxn.qc.get_qc_arguments(   rxn.instance_name, rxn.species.mult, rxn.species.charge, ts = 1,
     #                                    step = step, max_step=rxn.max_step, scan = rxn.scan)
     
+    skipped = 0
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
             if rxn.qc.check_qc(rxn.instance_name) == 'normal': 
@@ -54,6 +55,7 @@ def carry_out_reaction(rxn, step, command):
                     return step
         if rxn.skip and len(rxn.instance) < 4: 
             step = 12
+            skipped = 1
         geom = rxn.species.geom
     else:
         err, geom = rxn.qc.get_qc_geom(rxn.instance_name, rxn.species.natom, allow_error = 1)
@@ -77,15 +79,12 @@ def carry_out_reaction(rxn, step, command):
             for c in change:
                 fix.append(c[:-1])
             change = []
-        
-        #kwargs['release'] = release
-
-        if step == 0:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
+        if step == 0 or skipped:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
         elif step < rxn.max_step:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change)
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
         else:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change)
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
         
     else:
         # use the pcobfgs algorithm for the geometry update

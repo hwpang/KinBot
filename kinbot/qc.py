@@ -67,7 +67,36 @@ class QuantumChemistry:
             self.slurm_feature = ''
         else:
             self.slurm_feature = '#SBATCH -C ' + par.par['slurm_feature']
+
+
+    def qc_opt(self, species, geom, high_level=0, mp2=0):
+        """ 
+        Creates a geometry optimization input and runs it. 
+        """
+       
+        if species.wellorts == 0:
+            job = str(species.chemid) + '_well'
+            if mp2:
+                job += '_mp2'
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            elif high_level:
+                job = '_high'
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
+        else:
+            job = str(species.name)
+            if mp2:
+                job += '_mp2'
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+            elif high_level:
+                job += '_high'
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
         
+        return 0
+
 
     def qc_hir(self, species, geom, rot_index, ang_index, fix):
         """ 
@@ -129,46 +158,7 @@ class QuantumChemistry:
 
         return 0
 
-    def qc_opt(self, species, geom, high_level=0, mp2=0):
-        """ 
-        Creates a geometry optimization input and runs it. 
-        """
-        
-        job = str(species.chemid) + '_well'
-        if high_level:
-            job = str(species.chemid) + '_well_high'
-        if mp2:
-            job = str(species.chemid) + '_well_mp2'
-        
-        if mp2:
-            self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
-        elif high_level:
-            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
-        else:
-            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
 
-        return 0
-
-
-    def qc_opt_ts(self, species, geom, high_level=0):
-        """
-        Creates a ts optimization input and runs it
-        """
-        
-        job = str(species.name)
-        if high_level:
-            job += '_high'
-
-        if high_level:
-            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
-        elif step == 0:
-            self.assemble_ase_template(job, 'preopt0', species, geom, 0, self.sella, ts=0, fix=[], change=[])
-        elif step < max_step:
-            self.assemble_ase_template(job, 'preopt', species, geom, 0, self.sella, ts=0, fix=[], change=[])
-        else:
-            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, ts=0, fix=[])
-
-        return 0
 
     def submit_qc(self, job, singlejob=1):
         """
@@ -177,15 +167,17 @@ class QuantumChemistry:
             * has finished with Error termination
             * is currently running
         However, if the optional parameter singlejob is set to zero, then 
-        the job is run only if it has finished earlier with normal termination.
+        the job is run only if it has finished. It might have been successful or not. (??)
         This is for continuations, when the continuing jobs overwrite each other.
         """
 
         check = self.check_qc(job)
         if singlejob == 1:
-            if check != 0: return 0  # either normal or error termination, but is in database and done
+            if check != 0: 
+                return 0  # either normal or error termination, but is in database and done
         else:
-            if check == 'running': return 0  # still running
+            if check == 'running': 
+                return 0  # still running
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -569,7 +561,7 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix, change):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[]):
         """
         Assemble the template for an ASE.
         """
@@ -589,7 +581,10 @@ class QuantumChemistry:
             guess = False
             chk = True
             maxattempt = 2
-            singlejob = True
+            if wellorts:
+                singlejob = False
+            else:
+                singlejob = True
 
         elif task == 'optmp2':
             method = 'mp2'
@@ -625,7 +620,7 @@ class QuantumChemistry:
             guess = False
             chk = True
             maxattempt = 2
-            singlejob = True
+            singlejob = False
 
         elif task == 'preopt':
             method = 'am1'
@@ -688,7 +683,7 @@ class QuantumChemistry:
             guess = True
             chk = True
             maxattempt = 1
-            singlejob = False
+            singlejob = True
 
 
         # TEMPLATES 
@@ -744,6 +739,7 @@ class QuantumChemistry:
                                        qc=self.qc,
                                        fix=fix,
                                        change=change,
+                                       release=release,
                                        maxattempt=maxattempt,
                                        qc_command=self.qc_command)
 

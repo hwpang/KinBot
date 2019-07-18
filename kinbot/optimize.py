@@ -104,7 +104,7 @@ class Optimize:
                     if status:
                         # ring conf search is finished
                         self.scycconf = 1
-                # do the open chain par of the molecule
+                # do the open chain part of the molecule
                 if self.scycconf == 1:
                     # do open chain part if cyclic part is done
                     if self.sconf == -1:
@@ -135,12 +135,8 @@ class Optimize:
                         if self.shigh == -1:
                             # high level calculation did not start yet
                             logging.info('\tStarting high level optimization of {}'.format(self.species.name))
-                            if self.species.wellorts:
-                                # do the high level optimization of a ts
-                                self.qc.qc_opt_ts(self.species, self.species.geom, high_level=1)
-                            else:
-                                # do the high level optimization of a well
-                                self.qc.qc_opt(self.species, self.species.geom, high_level=1)
+                            # do the high level optimization of a ts
+                            self.qc.qc_opt(self.species, self.species.geom, high_level=1)
                             self.shigh = 0  # set the high status to running
                         if self.shigh == 0:
                             # high level calculation is running

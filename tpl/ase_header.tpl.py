@@ -34,6 +34,7 @@ irc_stepsize = {irc_stepsize}
 qc = '{qc}'
 fix = {fix}
 change = {change}
+release = {release}
 maxattempt = {maxattempt}
 qc_command = '{qc_command}'
 
