@@ -676,7 +676,7 @@ class QuantumChemistry:
         elif task[:3] == 'irc':
             method = self.method
             basis = self.basis 
-            integral = ''
+            integral = self.integral
             opt = False
             order = 0
             freq = False

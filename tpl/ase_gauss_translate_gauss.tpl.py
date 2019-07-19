@@ -15,7 +15,7 @@ if not sella:
     if task == 'ircf':
         kwargs['geom'] = 'AllCheck,NoKeepConstants'
         kwargs['irc'] = 'RCFC,Forward,MaxPoints={{}},StepSize={{}}'.format(irc_maxpoints, irc_stepsize)
-    if task == 'ircf':
+    if task == 'ircr':
         kwargs['geom'] = 'AllCheck,NoKeepConstants'
         kwargs['irc'] = 'RCFC,Reverse,MaxPoints={{}},StepSize={{}}'.format(irc_maxpoints, irc_stepsize)
 
