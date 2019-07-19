@@ -575,7 +575,6 @@ class QuantumChemistry:
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = True
             order = wellorts
             freq = True
             guess = False
@@ -590,7 +589,6 @@ class QuantumChemistry:
             method = 'mp2'
             basis = self.basis 
             integral = ''
-            opt = True
             order = wellorts
             freq = True
             guess = False
@@ -602,7 +600,6 @@ class QuantumChemistry:
             method = self.high_level_method
             basis = self.high_level_basis
             integral = self.integral
-            opt = True
             order = wellorts
             freq = True
             guess = False
@@ -614,7 +611,6 @@ class QuantumChemistry:
             method = 'am1'
             basis = ''
             integral = ''
-            opt = True
             order = 0
             freq = False
             guess = False
@@ -626,7 +622,6 @@ class QuantumChemistry:
             method = 'am1'
             basis = ''
             integral = ''
-            opt = True
             order = 0
             freq = False
             guess = True
@@ -639,7 +634,6 @@ class QuantumChemistry:
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = True
             order = wellorts
             freq = True
             guess = False
@@ -651,7 +645,6 @@ class QuantumChemistry:
             method = 'am1'
             basis = ''
             integral = ''
-            opt = False
             order = 0
             freq = False
             guess = False
@@ -664,7 +657,6 @@ class QuantumChemistry:
             method = self.high_level_method
             basis = self.high_level_basis 
             integral = self.integral
-            opt = True
             order = wellorts
             freq = False
             guess = False
@@ -677,8 +669,7 @@ class QuantumChemistry:
             method = self.method
             basis = self.basis 
             integral = self.integral
-            opt = False
-            order = 0
+            order = -1  # do not optimize
             freq = False
             guess = True
             chk = True

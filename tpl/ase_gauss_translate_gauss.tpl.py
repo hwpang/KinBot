@@ -4,9 +4,9 @@
 
 if not sella:
 
-    if order:
+    if order == 1:
         kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
-    else:
+    elif order == 0:
         kwargs['opt'] = 'ModRedun,Tight,CalcFC,MaxCycle=999'
 
     if freq:
