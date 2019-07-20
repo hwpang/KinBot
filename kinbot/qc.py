@@ -665,11 +665,23 @@ class QuantumChemistry:
             singlejob = True
  
         # IRC
-        elif task[:3] == 'irc':
+        elif task == 'ircf' or task == 'ircr':
             method = self.method
             basis = self.basis 
             integral = self.integral
             order = -1  # do not optimize
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+
+        # IRC PRODUCT
+        elif task == 'prodirc':
+            method = self.method
+            basis = self.basis 
+            integral = self.integral
+            order = 0  
             freq = False
             guess = True
             chk = True

@@ -153,18 +153,27 @@ class ReactionGenerator:
                             elif irc_status[0] == 'running' or irc_status[1] == 'running':
                                 continue
                             else: 
-                                #IRC's have successfully finished, have an error or were killed, in any case
-                                #read the geometries and try to make products out of them
-                                #verify which of the ircs leads back to the reactant, if any
-                                prod = obj.irc.irc2stationary_pt()
-                                if prod == 0:
-                                    logging.info('\t\tNo product found for {}'.format(instance_name))
-                                    self.species.reac_ts_done[index] = -999
+                                #The main IRC calculation is done, now onto IRC products
+                                #It was either 'normal' or 'error'
+                                #TODO not allowing unfinished jobs!!!
+                                irc_prod_status = obj.irc.check_irc_prod()
+                                if 0 in irc_prod_status:
+                                    logging.info('\t\tStarting IRC product calculations for {}'.format(instance_name))
+                                    obj.irc.do_irc_prod_calculations()
+                                elif irc_prod_status[0] == 'running' or irc_status[1] == 'running':
+                                    continue
                                 else:
-                                    #IRC's are done
-                                    obj.products = prod
-                                    obj.product_bonds = prod.bond
-                                    self.species.reac_ts_done[index] = 2
+                                    #read the geometries and try to make products out of them
+                                    #verify which of the ircs leads back to the reactant, if any
+                                    prod = obj.irc.irc2stationary_pt()
+                                    if prod == 0:
+                                        logging.info('\t\tNo product found for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                    else:
+                                        #IRC's are done
+                                        obj.products = prod
+                                        obj.product_bonds = prod.bond
+                                        self.species.reac_ts_done[index] = 2
                 elif self.species.reac_ts_done[index] == 2:
                     #identify bimolecular products and wells
                     fragments, maps = obj.products.start_multi_molecular()
