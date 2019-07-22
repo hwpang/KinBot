@@ -570,6 +570,10 @@ class QuantumChemistry:
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
         wellorts = bool(wellorts)
 
+        # certain tasks cannot (yet) be performed by sella, therefore
+        if task == 'ircf' or task == 'ircr' or task == 'prodirc':
+            sella = 0
+
         # TASKS AND OPTIONS
         if task == 'opt':
             method = self.method
