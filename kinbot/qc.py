@@ -172,7 +172,7 @@ class QuantumChemistry:
 
 
 
-    def submit_qc(self, job, singlejob=1):
+    def submit_qc(self, job, mem, memu, singlejob=1):
         """
         Submit a job to the queue, unless the job:
             * has finished with Normal termination
@@ -205,15 +205,25 @@ class QuantumChemistry:
         template_file = pkg_resources.resource_filename('tpl', self.queuing + '_python.tpl')
         python_file = '{}.py'.format(job)
         
-        python_template = open(template_head_file, 'r').read() 
         python_template = open(template_head_file, 'r').read() + open(template_file, 'r').read()
 
         if self.queuing == 'pbs':
-            python_template = python_template.format(   name=job, ppn=self.ppn, queue_name=self.queue_name, 
-                                                        dir='perm', python_file=python_file, arguments='' )
+            python_template = python_template.format(name=job, 
+                                                     ppn=self.ppn, 
+                                                     queue_name=self.queue_name, 
+                                                     dir='perm', 
+                                                     python_file=python_file, 
+                                                     arguments='',
+                                                     mem='{}{}'.format(mem, memu))
         elif self.queuing == 'slurm':
-            python_template = python_template.format(   name=job, ppn=self.ppn, queue_name=self.queue_name, dir='perm', 
-                                                        slurm_feature=self.slurm_feature, python_file=python_file, arguments='' )
+            python_template = python_template.format(name=job, 
+                                                     ppn=self.ppn, 
+                                                     queue_name=self.queue_name, 
+                                                     dir='perm', 
+                                                     slurm_feature=self.slurm_feature, 
+                                                     python_file=python_file, 
+                                                     arguments='',
+                                                     mem='{}{}'.format(mem, memu))
         else:
             logging.error('KinBot does not recognize queuing system {}.'.format(self.queuing))
             logging.error('Exiting')
@@ -765,6 +775,12 @@ class QuantumChemistry:
             qc_translate_qc = pkg_resources.resource_filename('tpl', 'ase_{qc}_translate_{qc}.tpl.py'.format(qc = self.qc))
             with open(qc_translate_qc) as f:
                 tpl_qc = f.read()
+        else:
+            tpl_qc = ''
+
+        qc_calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
+        with open(qc_calc) as f:
+            tpl_calc = f.read()
 
         if sella:
             task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.tpl.py')
@@ -781,7 +797,7 @@ class QuantumChemistry:
 
         #ASSEMBLE TEMPLATES
 
-        template = tpl_header + tpl_translate + tpl_qc + tpl_task + tpl_write_db
+        template = '{}{}{}{}{}{}'.format(tpl_header, tpl_translate, tpl_qc, tpl_calc, tpl_task, tpl_write_db)
 
         #SUBSTITUTE TEMPLATES 
         
@@ -821,7 +837,7 @@ class QuantumChemistry:
         f_out.close()
 
         # this will return the same number as submit_qc
-        return self.submit_qc(job, singlejob)
+        return self.submit_qc(job, mem, memu, singlejob)
 
 
 

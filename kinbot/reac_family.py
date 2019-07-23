@@ -41,9 +41,6 @@ def carry_out_reaction(rxn, step, command):
         status = rxn.qc.check_qc(rxn.instance_name)
         if status != 'normal' and status != 'error': return step
 
-    #kwargs = rxn.qc.get_qc_arguments(   rxn.instance_name, rxn.species.mult, rxn.species.charge, ts = 1,
-    #                                    step = step, max_step=rxn.max_step, scan = rxn.scan)
-    
     skipped = 0
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
@@ -89,7 +86,7 @@ def carry_out_reaction(rxn, step, command):
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
         
     else:
-        # use the pcobfgs algorithm for the geometry update
+        # use the pcobfgs algorithm for the geometry update, currently disabled and abandoned
         if step < rxn.max_step:
             del kwargs['opt']
             conv_crit = 0.01  # force convergence criterion 
@@ -103,8 +100,6 @@ def carry_out_reaction(rxn, step, command):
             template = open(template_file,'r').read()
             template = template.format(label = rxn.instance_name, kwargs = kwargs, atom = list(rxn.species.atom), 
                                        geom = list([list(gi) for gi in geom]), ppn = rxn.qc.ppn, qc_command=command)
-    
-    # step += rxn.qc.submit_qc(rxn.instance_name, 0)
     
     return step
     

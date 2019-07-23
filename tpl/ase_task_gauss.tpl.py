@@ -1,10 +1,3 @@
-# Gaussian ASE calculator
-
-from ase.calculators.gaussian import Gaussian
-Gaussian.command = '{qc_command} < PREFIX.com > PREFIX.log'
-calc = Gaussian(**kwargs)
-mol.set_calculator(calc)
-
 # only used if change is invoked, otherwise modredundant is used
 bonds, angles, dihedrals = reader_{qc}.constraint(mol, fix, change)
 

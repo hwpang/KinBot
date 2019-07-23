@@ -39,6 +39,6 @@ maxattempt = {maxattempt}
 qc_command = '{qc_command}'
 guessmix = {guessmix}
 calcall_ts = {calcall_ts}
-mem = str(float({mem}) * 0.95) 
+mem = str(int(float({mem}) * 0.95)) 
 memu = '{memu}'
 
