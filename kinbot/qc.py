@@ -66,7 +66,7 @@ class QuantumChemistry:
         self.guessmix = par.par['guessmix']
 
         self.mem0 = par.par['mem0'].split()[0]
-        self.mem0u = par.par['mem1'].split()[1]
+        self.mem0u = par.par['mem0'].split()[1]
         self.mem = par.par['mem'].split()[0]
         self.memu = par.par['mem'].split()[1]
         self.memmp2 = par.par['memmp2'].split()[0]
@@ -711,7 +711,7 @@ class QuantumChemistry:
             mem = self.mem
             memu = self.memu
 
-            elif task == 'ircfmp2' or task == 'ircrmp2':
+        elif task == 'ircfmp2' or task == 'ircrmp2':
             method = 'mp2'
             basis = self.basis 
             integral = ''
@@ -738,7 +738,7 @@ class QuantumChemistry:
             mem = self.mem
             memu = self.memu
 
-            elif task == 'prodircmp2':
+        elif task == 'prodircmp2':
             method = 'mp2'
             basis = self.basis 
             integral = ''
