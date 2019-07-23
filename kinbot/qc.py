@@ -62,6 +62,18 @@ class QuantumChemistry:
         self.sella = par.par['sella']
         self.mult = par.par['mult']
         self.charge = par.par['charge']
+        self.calcall_ts = par.par['calcall_ts']
+        self.guessmix = par.par['guessmix']
+
+        self.mem0 = par.par['mem0'].split()[0]
+        self.mem0u = par.par['mem1'].split()[1]
+        self.mem = par.par['mem'].split()[0]
+        self.memu = par.par['mem'].split()[1]
+        self.memmp2 = par.par['memmp2'].split()[0]
+        self.memmp2u = par.par['memmp2'].split()[1]
+        self.memhl = par.par['memhl'].split()[0]
+        self.memhlu = par.par['memhl'].split()[1]
+
         # sometimes there is no slurm feature at all
         if par.par['slurm_feature'] == '':
             self.slurm_feature = ''
@@ -574,6 +586,7 @@ class QuantumChemistry:
         if task == 'ircf' or task == 'ircr' or task == 'prodirc':
             sella = 0
 
+
         # TASKS AND OPTIONS
         if task == 'opt':
             method = self.method
@@ -588,6 +601,8 @@ class QuantumChemistry:
                 singlejob = False
             else:
                 singlejob = True
+            mem = self.mem
+            memu = self.memu
 
         elif task == 'optmp2':
             method = 'mp2'
@@ -599,6 +614,8 @@ class QuantumChemistry:
             chk = True
             maxattempt = 2
             singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
 
         elif task == 'opthl':
             method = self.high_level_method
@@ -610,6 +627,8 @@ class QuantumChemistry:
             chk = True
             maxattempt = 2
             singlejob = True
+            mem = self.memhl
+            memu = self.memhlu
 
         elif task == 'preopt0':
             method = 'am1'
@@ -621,6 +640,8 @@ class QuantumChemistry:
             chk = True
             maxattempt = 2
             singlejob = False
+            mem = self.mem0
+            memu = self.mem0u
 
         elif task == 'preopt':
             method = 'am1'
@@ -632,6 +653,8 @@ class QuantumChemistry:
             chk = True
             maxattempt = 2
             singlejob = False
+            mem = self.mem0
+            memu = self.mem0u
 
         #CONFORMERS
         elif task == 'conf':
@@ -644,6 +667,8 @@ class QuantumChemistry:
             chk = False
             maxattempt = 2
             singlejob = True
+            mem = self.mem
+            memu = self.memu
 
         elif task == 'ringconf':
             method = 'am1'
@@ -655,6 +680,8 @@ class QuantumChemistry:
             chk = False
             maxattempt = 1
             singlejob = True
+            mem = self.mem0
+            memu = self.mem0u
 
         # HINDERED ROTORS
         elif task == 'hir':
@@ -667,31 +694,62 @@ class QuantumChemistry:
             chk = False
             maxattempt = 2
             singlejob = True
+            mem = self.mem
+            memu = self.memu
  
         # IRC
         elif task == 'ircf' or task == 'ircr':
             method = self.method
             basis = self.basis 
-            integral = self.integral
+            integral = ''
             order = -1  # do not optimize
             freq = False
             guess = True
             chk = True
             maxattempt = 1
             singlejob = True
+            mem = self.mem
+            memu = self.memu
 
+            elif task == 'ircfmp2' or task == 'ircrmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = -1  # do not optimize
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
+ 
         # IRC PRODUCT
         elif task == 'prodirc':
             method = self.method
             basis = self.basis 
-            integral = self.integral
+            integral = ''
             order = 0  
             freq = False
             guess = True
             chk = True
             maxattempt = 1
             singlejob = True
+            mem = self.mem
+            memu = self.memu
 
+            elif task == 'prodircmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = 0  
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
 
         # TEMPLATES 
         
@@ -717,12 +775,15 @@ class QuantumChemistry:
             with open(task_qc) as f:
                 tpl_task = f.read()
 
+        write_db = pkg_resources.resource_filename('tpl', 'ase_write_db.tpl.py') 
+        with open(write_db) as f:
+            tpl_write_db = f.read()
+
         #ASSEMBLE TEMPLATES
 
-        template = tpl_header + tpl_translate + tpl_qc + tpl_task 
+        template = tpl_header + tpl_translate + tpl_qc + tpl_task + tpl_write_db
 
         #SUBSTITUTE TEMPLATES 
-        #CalcAll TODO
         
         if 1:  # THIS IS JUST HERE WHILE TESTING, WILL NEED TO DELETE AND UNINDENT
             template = template.format(label=job, 
@@ -748,7 +809,11 @@ class QuantumChemistry:
                                        change=change,
                                        release=release,
                                        maxattempt=maxattempt,
-                                       qc_command=self.qc_command)
+                                       qc_command=self.qc_command,
+                                       guessmix=self.guessmix,
+                                       calcall_ts=self.calcall_ts,
+                                       mem=mem,
+                                       memu=memu)
 
 
         f_out = open('{}.py'.format(job),'w')

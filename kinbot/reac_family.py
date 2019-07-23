@@ -79,12 +79,12 @@ def carry_out_reaction(rxn, step, command):
             for c in change:
                 fix.append(c[:-1])
             change = []
-        if step == 0 or skipped:
+        if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
+        elif step == 0 or skipped:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
         elif step < rxn.max_step:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
-        elif scan or 'R_Addition_MultipleBond' in job:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
         else:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
         

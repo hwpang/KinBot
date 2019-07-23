@@ -3,14 +3,14 @@
 
 kwargs = {{
 'nprocshared' : ppn,
-'mem' : '1000MW',
+'mem' : mem + memu,
 'label': label, 
 'method': method,
 'basis': basis,
 'NoSymm' : 'NoSymm',
 'multiplicity': mult,
 'charge': charge,
-'scf' : 'xqc',
+'scf' : 'xqc'
 }}
 
 if chk:
@@ -19,5 +19,7 @@ if guess:
     kwargs['guess'] = 'Read'
 if len(integral) > 0:
     kwargs['integral'] = integral
+if guessmix and not guess:  # only for fresh start jobs
+    kwargs['guess'] = 'Mix' 
 
 
