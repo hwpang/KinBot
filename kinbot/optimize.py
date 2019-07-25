@@ -68,6 +68,7 @@ class Optimize:
         self.scycconf = -1
         self.sconf = -1
         self.shigh = -1
+        self.sfreqhigh = -1
         self.shir = -1
 
         # restart counter: number of times the high-level and hir calculations
@@ -146,6 +147,7 @@ class Optimize:
                                 # found an error
                                 logging.info('\tHigh level optimization failed for {}'.format(self.species.name))
                                 self.shigh = -999
+                                self.sfreqhigh = -999
                             if status == 'normal':
                                 # finished successfully
                                 err, new_geom = self.qc.get_qc_geom(self.job_high, self.species.natom, wait=self.wait)
@@ -153,17 +155,35 @@ class Optimize:
                                     # geometry is as expected
                                     err, self.species.geom = self.qc.get_qc_geom(self.job_high, self.species.natom)
                                     err, self.species.energy = self.qc.get_qc_energy(self.job_high)
-                                    err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
-                                    err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
-                                    self.shigh = 1
+                                    if self.sfreqhigh == -1:
+                                        # high level frequency did not start yet
+                                        logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
+                                        # do the high level freq of a ts
+                                        self.qc.qc_freq(self.species, self.species.geom, high_level=1)
+                                        self.sfreqhigh = 0 # set the freq high status to running
+                                    if self.sfreqhigh == 0:
+                                        # freq high level is running
+                                        # check if it finished
+                                        status = self.qc.check_qc(self.job_high)
+                                        if status == 'error':
+                                            # found an error
+                                            logging.info('\tHigh level frequency calculation failed for {}'.format(self.species.name))
+                                            self.sfreqhigh = -999
+                                        if status == 'normal':
+                                            # finished successfully
+                                            err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
+                                            err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
+                                            self.sfreqhigh = 1
                                 else:
                                     # geometry diverged to other structure
                                     logging.info('\tHigh level ts optimization converged to different structure for {}'.format(self.species.name))
                                     self.shigh = -999
+                                    self.sfreqhigh = -999
                     else:
                         # no high-level calculations necessary, set status to finished
                         self.shigh = 1
-                    if self.shigh == 1:
+                        self.sfreqhigh = 1
+                    if self.shigh == 1 and self.sfreqhigh == 1:
                         # do the HIR calculation
                         if self.par.par['rotor_scan'] == 1:
                             if self.shir == -1:
@@ -222,7 +242,7 @@ class Optimize:
                         else:
                             # no hir calculations necessary, set status to finished
                             self.shir = 1
-                    if not self.wait or self.shir == 1 or self.shigh == -999:
+                    if not self.wait or self.shir == 1 or self.shigh == -999 or self.shigh == -999:
                         # break the loop if no waiting is required or
                         # if the hir calcs are done or
                         # if the high level calc failed

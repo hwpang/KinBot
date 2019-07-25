@@ -23,26 +23,63 @@ for f in change:
 
 #!/usr/bin/env python3
 
-from sella import MinModeAtoms, optimize
 
-# Create a Sella MinMode object
-myminmode = MinModeAtoms(mol,  # Your Atoms object
-                         calc,  # Your calculator
-                         constraints=constraints,  # Your constraints
-                         trajectory='{label}.traj',  # Optional trajectory TODO remove option
-                         )
+from sella.aseopt import Sella
 
-# These need to be keywords in KinBot TODO
-x1 = optimize(myminmode,    # Your MinMode object
-              maxiter=500,  # Maximum number of force evaluations
-              ftol=1e-3,    # Norm of the force vector, convergence threshold
-              r_trust=5e-4, # Initial trust radius (Angstrom per d.o.f.)
-              order=order,  # Order of saddle point to find (set to 0 for minimization)
-              dxL=1e-4,     # Finite difference displacement magnitude (Angstrom)
-              maxres=0.1,   # Maximum residual for eigensolver convergence (should be <= 1)
-              eig=(order!=0), # Switch on eigensolve for saddle points only
-              )
+#myatoms.calc = calc
 
+e = mol.get_potential_energy()  # do a first calculation to create a chk file
+
+if qc == 'gauss':
+    kwargs['guess'] = 'Read'
+    calc = Gaussian(**kwargs)
+elif qc == 'nwchem':
+    calc = NWChem(**kwargs)
+
+mol.set_calculator(calc)
+outfile = '{label}.log'
+
+# everything after 'dxL' is optional
+dyn = Sella(mol, trajectory='{label}.traj', dxL=1e-4, r_trust=5e-4,
+            inc_factr=1.1, dec_factr=0.9, dec_ratio=5.0, inc_ratio=1.01,
+            order=order, eig=False)
+
+for converged in dyn.irun(fmax=0., steps=3000):
+    # x = mol.get_positions()
+    # f = mol.get_forces()
+
+    # the Hessian matrix
+    # H = dyn.mm.H
+
+    # its eigenvalues excluding translation/rotation
+    # lams = dyn.mm.lams
+
+    # the corresponding eigenvectors
+    # vecs = dyn.mm.vecs
+
+    if reader_{qc}.read_convergence(outfile) == 1:
+        break
+
+#from sella import MinModeAtoms, optimize
+#
+## Create a Sella MinMode object
+#myminmode = MinModeAtoms(mol,  # Your Atoms object
+#                         calc,  # Your calculator
+#                         constraints=constraints,  # Your constraints
+#                         trajectory='{label}.traj',  # Optional trajectory TODO remove option
+#                         )
+#
+## These need to be keywords in KinBot TODO
+#x1 = optimize(myminmode,    # Your MinMode object
+#              maxiter=500,  # Maximum number of force evaluations
+#              ftol=1e-3,    # Norm of the force vector, convergence threshold
+#              r_trust=5e-4, # Initial trust radius (Angstrom per d.o.f.)
+#              order=order,  # Order of saddle point to find (set to 0 for minimization)
+#              dxL=1e-4,     # Finite difference displacement magnitude (Angstrom)
+#              maxres=0.1,   # Maximum residual for eigensolver convergence (should be <= 1)
+#              eig=(order!=0), # Switch on eigensolve for saddle points only
+#              )
+#
 
 # if freq:
     # TODO what to do?

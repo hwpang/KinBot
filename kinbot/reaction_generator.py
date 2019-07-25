@@ -92,9 +92,19 @@ class ReactionGenerator:
                     
                     if obj.scan == 0: #don't do a scan of a bond
                         if self.species.reac_step[index] == obj.max_step + 1:
-                            status = self.qc.get_qc_freq(instance_name, self.species.natom)[0]
+                            status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0:
-                                self.species.reac_ts_done[index] = 1
+                                # start freq calculation
+                                # if success
+                                    # read freq
+                                    # if one negative
+                                        self.species.reac_ts_done[index] = 1
+                                    # if not
+                                        logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                # if not success
+                                    self.species.reac_ts_done[index] = -999
+                                    logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
@@ -103,9 +113,19 @@ class ReactionGenerator:
                     
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
-                            status = self.qc.get_qc_freq(instance_name, self.species.natom)[0]
+                            status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0:
-                                self.species.reac_ts_done[index] = 1
+                                # start freq calculation
+                                # if success
+                                    # read freq
+                                    # if one negative
+                                        self.species.reac_ts_done[index] = 1
+                                    # if not
+                                        logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                # if not success
+                                    self.species.reac_ts_done[index] = -999
+                                    logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
@@ -181,6 +201,7 @@ class ReactionGenerator:
                     for i, frag in enumerate(fragments):
                         obj.products.append(frag)
                         self.qc.qc_opt(frag, frag.geom)
+                        # TODO add qc_freq in the cycle
                     
                     self.species.reac_ts_done[index] = 3
                 elif self.species.reac_ts_done[index] == 3:

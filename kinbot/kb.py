@@ -132,6 +132,8 @@ def main():
     qc.qc_opt(well0, well0.geom)
     err, well0.geom = qc.get_qc_geom(str(well0.chemid) + '_well',
                                      well0.natom, wait=1)
+    logging.info('Starting frequency calculation of intial well')
+    qc.qc_freq(well0, well0.geom)
     err, well0.freq = qc.get_qc_freq(str(well0.chemid) + '_well',
                                      well0.natom, wait=1)
     if err < 0:
@@ -153,6 +155,9 @@ def main():
     logging.info('Starting MP2 optimization of intial well')
     qc.qc_opt(well0, well0.geom, mp2=1)
     err, geom = qc.get_qc_geom(str(well0.chemid) + '_well_mp2', well0.natom, 1)
+    logging.info('Starting MP2 frequency calculation of intial well')
+    qc.qc_freq(well0, well0.geom, mp2=1)
+    err, freq = qc.get_qc_freq(str(well0.chemid) + '_well_mp2', well0.natom, 1)
 
     # characterize again and look for differences
     well0.characterize(par.par['dimer'])

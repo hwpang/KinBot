@@ -110,6 +110,28 @@ class QuantumChemistry:
         return 0
 
 
+    def qc_freq(self, species, geom, high_level=0, mp2=0):
+        """ 
+        Creates a frequency calculation and runs it. Always done with internal calculation of the qc code.
+        """
+
+        if species.wellorts == 0:
+            job = str(species.chemid) + '_well'
+        else:
+            job = str(species.name)
+
+        if mp2:
+            job += '_mp2'
+            self.assemble_ase_template(job, 'freqmp2', species, geom, species.wellorts, 0, fix=[], change=[])
+        elif high_level:
+            job = '_high'
+            self.assemble_ase_template(job, 'freqhl', species, geom, species.wellorts, 0, fix=[], change=[])
+        else:
+            self.assemble_ase_template(job, 'freq', species, geom, species.wellorts, 0, fix=[], change=[])
+
+        return 0
+
+
     def qc_hir(self, species, geom, rot_index, ang_index, fix):
         """ 
         Creates a constrained geometry optimization input and runs it. 
@@ -593,17 +615,18 @@ class QuantumChemistry:
         wellorts = bool(wellorts)
 
         # certain tasks cannot (yet) be performed by sella, therefore
-        if task == 'ircf' or task == 'ircr' or task == 'prodirc':
+        nosella = ['ircf', 'ircr', 'ircfmp2', 'ircrmp2', 'freq', 'freqmp2', 'freqhigh']
+        if task in nosella:
             sella = 0
 
-
         # TASKS AND OPTIONS
+        # OPTIMIZATIONS
         if task == 'opt':
             method = self.method
             basis = self.basis 
             integral = ''
             order = wellorts
-            freq = True
+            freq = False
             guess = False
             chk = True
             maxattempt = 2
@@ -619,7 +642,7 @@ class QuantumChemistry:
             basis = self.basis 
             integral = ''
             order = wellorts
-            freq = True
+            freq = False
             guess = False
             chk = True
             maxattempt = 2
@@ -632,7 +655,7 @@ class QuantumChemistry:
             basis = self.high_level_basis
             integral = self.integral
             order = wellorts
-            freq = True
+            freq = False
             guess = False
             chk = True
             maxattempt = 2
@@ -666,15 +689,57 @@ class QuantumChemistry:
             mem = self.mem0
             memu = self.mem0u
 
-        #CONFORMERS
+        # FREQUENCY
+
+        if task == 'freq':
+            method = self.method
+            basis = self.basis 
+            integral = ''
+            order = -1
+            freq = True
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.mem
+            memu = self.memu
+
+        elif task == 'freqmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = -1
+            freq = True
+            guess =  True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.memmp2
+            memu = self.memmp2u
+
+        elif task == 'freqhl':
+            method = self.high_level_method
+            basis = self.high_level_basis
+            integral = self.integral
+            order = -1
+            freq = True
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.memhl
+            memu = self.memhlu
+
+        # CONFORMERS
+
         elif task == 'conf':
             method = self.method
             basis = self.basis 
             integral = ''
             order = wellorts
-            freq = True
-            guess = False
-            chk = False
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 2
             singlejob = True
             mem = self.mem

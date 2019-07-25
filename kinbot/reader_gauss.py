@@ -19,7 +19,6 @@
 ###################################################
 
 import numpy as np
-import re
 
 """
 Functions to read quantum chemistry output files.
@@ -34,7 +33,7 @@ def read_geom(outfile, mol, dummy):
 
     geom = np.zeros((len(mol),3))
     for index, line in enumerate(reversed(lines)):
-        if re.search('Input orientation:', line) != None:
+        if 'Input orientation:' in line:
             for n in range(len(mol)):
                 geom[n][0:3] = np.array(lines[-index+4+n].split()[3:6]).astype(float)
             break
@@ -54,7 +53,7 @@ def read_zpe(outfile):
         lines = f.readlines()
 
     for line in reversed(lines):
-        if re.search('Zero-point correction=', line) != None:
+        if 'Zero-point correction=' in line:
             zpe = float(line.split()[2])
 
     return zpe
@@ -74,7 +73,7 @@ def read_freq(outfile, atom):
     else:
         freq = []
         for line in lines:
-            if re.search('Frequencies', line) != None:
+            if 'Frequencies' in line:
                 if natom == 2:
                     freq.append(np.array(line.split()[2]).astype(float))
                     break
@@ -83,6 +82,25 @@ def read_freq(outfile, atom):
                     freq.extend(f)
 
     return freq
+
+
+def read_convergence(outfile):
+    """
+    Check for the four YES.
+    """
+
+    with open(outfile) as f:
+        lines = f.readlines()
+        
+    for n, line in enumerate(lines):
+        if 'Item               Value     Threshold  Converged?' in line:
+            if 'YES' in lines[n+1]:
+                if 'YES' in lines[n+2]:
+                    if 'YES' in lines[n+3]:
+                        if 'YES' in lines[n+4]:
+                            return 1
+
+    return 0  # will look through the whole file
 
 
 def constraint(mol, fix, change):

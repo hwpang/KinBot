@@ -10,7 +10,8 @@ kwargs = {{
 'NoSymm' : 'NoSymm',
 'multiplicity': mult,
 'charge': charge,
-'scf' : 'xqc'
+'scf' : 'xqc',
+'population' : 'None',
 }}
 
 if chk:
