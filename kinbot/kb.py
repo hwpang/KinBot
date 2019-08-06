@@ -132,6 +132,9 @@ def main():
     qc.qc_opt(well0, well0.geom)
     err, well0.geom = qc.get_qc_geom(str(well0.chemid) + '_well',
                                      well0.natom, wait=1)
+    if err < 0:
+        logging.error('Error with initial structure optimization.')
+        return
     logging.info('Starting frequency calculation of intial well')
     qc.qc_freq(well0, well0.geom)
     err, well0.freq = qc.get_qc_freq(str(well0.chemid) + '_well',
@@ -139,6 +142,7 @@ def main():
     if err < 0:
         logging.error('Error with initial structure optimization.')
         return
+
     if any(well0.freq[i] <= 0 for i in range(len(well0.freq))):
         logging.error('Found imaginary frequency for initial structure.')
         return
@@ -167,9 +171,10 @@ def main():
     err, well0.energy = qc.get_qc_energy(str(well0.chemid) + '_well', 1)
     err, well0.zpe = qc.get_qc_zpe(str(well0.chemid) + '_well', 1)
 
+    # do conformer search, high level opt, hir, etc., as requested
     well_opt = Optimize(well0, par, qc, wait=1)
     well_opt.do_optimization()
-    if well_opt.shigh == -999:
+    if well_opt.shigh == -999 or well_opt.sfreqhigh == -999:
         logging.error('Error with high level optimization of initial structure.')
         return
 
@@ -180,11 +185,13 @@ def main():
         rf.find_reactions()
         rg = ReactionGenerator(well0, par, qc)
         rg.generate()
+
     # do the homolytic scission products search
     if par.par['homolytic_scissions'] == 1:
         logging.info('Starting the search for homolytic scission products')
         well0.homolytic_scissions = HomolyticScissions(well0, par, qc)
         well0.homolytic_scissions.find_homolytic_scissions()
+
     # initialize the master equation instance
     mess = MESS(par, well0)
     mess.write_input()

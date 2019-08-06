@@ -172,26 +172,35 @@ class QuantumChemistry:
         return 0
 
 
-    def qc_conf(self, species, geom, index=-1, ring=0):
+    def qc_conf(self, species, geom, index=-1, freq=0, mp2=0):
         """ 
         Creates a geometry optimization input for the conformational search and runs it.
         wellorts: 0 for wells and 1 for saddle points
         index: >=0 for sampling, each job will get numbered with index
+        freq: request a single freq calculation
+        mp2: calculate at the mp2 level
         """
+
         if index == -1:
             job = 'conf/' + str(species.chemid) + '_well'
         else:
-            r = ''
-            if ring: r = 'r'
             if species.wellorts:
-                job = 'conf/' + species.name + '_' + r + str(index).zfill(self.zf)
+                job = 'conf/' + species.name + '_' + str(index).zfill(self.zf)
             else:
-                job = 'conf/' + str(species.chemid) + '_' + r + str(index).zfill(self.zf)
-        
-        self.assemble_ase_template(job, 'conf', species, geom, species.wellorts, self.sella, fix=[], change=[])
+                job = 'conf/' + str(species.chemid) + '_' + str(index).zfill(self.zf)
+       
+        if freq:
+            if mp2:
+                self.assemble_ase_template(job, 'freqmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'freq', species, geom, species.wellorts, self.sella, fix=[], change=[])
+        else:
+            if mp2:
+                self.assemble_ase_template(job, 'confmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'conf', species, geom, species.wellorts, self.sella, fix=[], change=[])
 
         return 0
-
 
 
     def submit_qc(self, job, mem, memu, singlejob=1):
@@ -459,7 +468,7 @@ class QuantumChemistry:
                 if wait == 1:
                     time.sleep(1)
                 else:
-                    return 0, 0.
+                    return 0, 0.  # TODO is it not a problem for atoms??
             else:
                 break
 
@@ -734,6 +743,19 @@ class QuantumChemistry:
 
         elif task == 'conf':
             method = self.method
+            basis = self.basis 
+            integral = ''
+            order = wellorts
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 2
+            singlejob = True
+            mem = self.mem
+            memu = self.memu
+
+        elif task == 'confmp2':
+            method = 'mp2'
             basis = self.basis 
             integral = ''
             order = wellorts

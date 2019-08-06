@@ -69,6 +69,7 @@ class ReactionGenerator:
         If at any times the calculation fails, reac_ts_done is set to -999.
         If all steps are successful, reac_ts_done is set to -1.
         """
+
         deleted = []
         if len(self.species.reac_inst) > 0:
             alldone = 1
@@ -84,25 +85,29 @@ class ReactionGenerator:
                 if self.species.reac_ts_done[index] == 0 and self.species.reac_step[index] == 0:
                     #verify after restart if search has failed in previous kinbot run
                     status = self.qc.check_qc(instance_name)
-                    if status == 'error' or status == 'killed':
+                    if status == 'error' or status == 'killed':  # TODO remove killed everywhere??
                         logging.info('\tRxn search failed (error or killed) for {}'.format(instance_name))
                         self.species.reac_ts_done[index] = -999
                 
                 if self.species.reac_ts_done[index] == 0: # ts search is ongoing
                     
                     if obj.scan == 0: #don't do a scan of a bond
-                        if self.species.reac_step[index] == obj.max_step + 1:
+                        if self.species.reac_step[index] == obj.max_step + 1:  # reached last step, no freq yet though
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
-                            if status == 0:
+                            if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
-                                # if success
-                                    # read freq
-                                    # if one negative
+                                self.qc.qc_freq(instance_name, self.geom)
+                                self.species_ts_freq[index] = 1
+                            elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
+                                status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
+                                if status == 0:
+                                    self.species.reac_ts_freq[index] = 2  # won't return here any more
+                                    if freq[0] < 0. and freq[1] > 0.:
                                         self.species.reac_ts_done[index] = 1
-                                    # if not
+                                    else:
                                         logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
                                         self.species.reac_ts_done[index] = -999
-                                # if not success
+                                else:
                                     self.species.reac_ts_done[index] = -999
                                     logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
@@ -114,16 +119,20 @@ class ReactionGenerator:
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
-                            if status == 0:
+                            if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
-                                # if success
-                                    # read freq
-                                    # if one negative
+                                self.qc.qc_freq(instance_name, self.geom)
+                                self.species_ts_freq[index] = 1
+                            elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
+                                status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
+                                if status == 0:
+                                    self.species.reac_ts_freq[index] = 2  # won't return here any more
+                                    if freq[0] < 0. and freq[1] > 0.:
                                         self.species.reac_ts_done[index] = 1
-                                    # if not
+                                    else:
                                         logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
                                         self.species.reac_ts_done[index] = -999
-                                # if not success
+                                else:
                                     self.species.reac_ts_done[index] = -999
                                     logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
@@ -194,6 +203,7 @@ class ReactionGenerator:
                                         obj.products = prod
                                         obj.product_bonds = prod.bond
                                         self.species.reac_ts_done[index] = 2
+
                 elif self.species.reac_ts_done[index] == 2:
                     #identify bimolecular products and wells
                     fragments, maps = obj.products.start_multi_molecular()
@@ -201,9 +211,11 @@ class ReactionGenerator:
                     for i, frag in enumerate(fragments):
                         obj.products.append(frag)
                         self.qc.qc_opt(frag, frag.geom)
-                        # TODO add qc_freq in the cycle
-                    
+                        # TODO add qc_freq in the cycle, but maybe not needed, this is just a joint optimization, 
+                        # the separation and characterization is done below, where freq is included in the 
+                        # Optimize object already
                     self.species.reac_ts_done[index] = 3
+
                 elif self.species.reac_ts_done[index] == 3:
                     #wait for the optimization to finish 
                     err = 0
@@ -230,6 +242,7 @@ class ReactionGenerator:
                                 err = -1
                     if err == 0:
                         self.species.reac_ts_done[index] = 4
+
                 elif self.species.reac_ts_done[index] == 4:
                     # Do the TS and product optimization
                     
@@ -270,6 +283,7 @@ class ReactionGenerator:
                             prod_opt.do_optimization()
                         obj.prod_opt.append(prod_opt)
                     self.species.reac_ts_done[index] = 5
+
                 elif self.species.reac_ts_done[index] == 5:
                     #check up on the TS and product optimizations 
                     opts_done = 1
@@ -290,6 +304,7 @@ class ReactionGenerator:
                         self.species.reac_ts_done[index] = -999
                     elif opts_done:
                         self.species.reac_ts_done[index] = 6
+
                 elif self.species.reac_ts_done[index] == 6:
                     #Finilize the calculations
                     

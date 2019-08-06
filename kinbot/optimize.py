@@ -78,6 +78,8 @@ class Optimize:
         self.max_restart = par.par['rotation_restart']
 
     def do_optimization(self):
+
+        # CONFORMATIONS
         while 1:
             # do the conformational search
             if self.par.par['conformer_search'] == 1:
@@ -129,8 +131,10 @@ class Optimize:
             else:
                 # no conf search necessary, set status to finished
                 self.sconf = 1
+
+            # HIGH LEVEL OPTIMIZATION
             if self.sconf == 1:  # conf search is finished
-                while self.restart < self.max_restart:
+                while self.restart < self.max_restart:  # the number of restarts when the HIR finds a lower E structure
                     # do the high level calculations
                     if self.par.par['high_level'] == 1:
                         if self.shigh == -1:
@@ -152,13 +156,13 @@ class Optimize:
                                 # finished successfully
                                 err, new_geom = self.qc.get_qc_geom(self.job_high, self.species.natom, wait=self.wait)
                                 if geometry.equal_geom(self.species.bond, self.species.geom, new_geom, 0.1):
-                                    # geometry is as expected
+                                    # geometry is as expected, update
                                     err, self.species.geom = self.qc.get_qc_geom(self.job_high, self.species.natom)
                                     err, self.species.energy = self.qc.get_qc_energy(self.job_high)
                                     if self.sfreqhigh == -1:
                                         # high level frequency did not start yet
                                         logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
-                                        # do the high level freq of a ts
+                                        # do the high level freq of a ts  TODO why ts???
                                         self.qc.qc_freq(self.species, self.species.geom, high_level=1)
                                         self.sfreqhigh = 0 # set the freq high status to running
                                     if self.sfreqhigh == 0:
@@ -168,7 +172,7 @@ class Optimize:
                                         if status == 'error':
                                             # found an error
                                             logging.info('\tHigh level frequency calculation failed for {}'.format(self.species.name))
-                                            self.sfreqhigh = -999
+                                            self.sfreqhigh = -999  # note that shigh can still be successful
                                         if status == 'normal':
                                             # finished successfully
                                             err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
@@ -183,6 +187,8 @@ class Optimize:
                         # no high-level calculations necessary, set status to finished
                         self.shigh = 1
                         self.sfreqhigh = 1
+
+                    # HINDERED ROTOR
                     if self.shigh == 1 and self.sfreqhigh == 1:
                         # do the HIR calculation
                         if self.par.par['rotor_scan'] == 1:
@@ -231,6 +237,7 @@ class Optimize:
                                                             os.remove(self.job_hir + str(rotor) + '_' + str(ai).zfill(2) + '.log')
                                                 # set the status of high and hir back to not started
                                                 self.shigh = -1
+                                                self.sfreqhigh = -1
                                                 self.shir = -1
                                             else:
                                                 logging.info('\t\tLower energy found, but readched max restart for {}'.format(self.species.name))
@@ -242,13 +249,15 @@ class Optimize:
                         else:
                             # no hir calculations necessary, set status to finished
                             self.shir = 1
-                    if not self.wait or self.shir == 1 or self.shigh == -999 or self.shigh == -999:
+                    if not self.wait or self.shir == 1 or self.shigh == -999 or self.sfreqhigh == -999:
                         # break the loop if no waiting is required or
                         # if the hir calcs are done or
-                        # if the high level calc failed
+                        # if the high level calc failed (optimization or frequency)
                         break
                     else:
                         time.sleep(1)
+
+            # SYMMETRY, PROJECTION OF FREQUENCIES, MOLPRO, CLEANUP
             if self.shir == 1:
                 # finilize if no waiting is required or if the hir calcs are done
                 # calculate the symmetry numbers
@@ -281,6 +290,7 @@ class Optimize:
                 time.sleep(1)
             else:
                 return 0
+
     
     def delete_files(self):
         # job names

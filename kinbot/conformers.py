@@ -24,6 +24,7 @@ import copy
 import logging
 import numpy as np
 
+from shutil import copyfile
 from kinbot import geometry
 from kinbot import zmatrix
 
@@ -37,6 +38,7 @@ class Conformers:
         species: instance of StationaryPoint
         qc: instance of QuantumChemistry
         """
+
         self.species = species
         self.qc = qc
 
@@ -77,6 +79,7 @@ class Conformers:
         # Number of random conformers in case no
         # exhaustive search is done
         self.nconfs = par.par['random_conf']
+
 
     def generate_ring_conformers(self, cart):
         """
@@ -123,10 +126,12 @@ class Conformers:
         for ci in range(self.cyc_conf):
             self.start_ring_conformer_search(ci, copy.deepcopy(self.species.geom))
 
+
     def start_ring_conformer_search(self, index, cart):
         """
         index: number of the conformer
         """
+
         if self.cyc_conf_index[index] == len(self.cyc_dih_atoms[index]) - 1:
             # this conformer has finished
             return 0
@@ -148,11 +153,13 @@ class Conformers:
             self.qc.qc_ring_conf(self.species, cart, fix, change, index, self.cyc_conf_index[index])
         return 1
 
+
     def test_ring_conformer(self, index):
         """
         Test whether a conformer has the same bond matrix as the original structure.
         Returns the conformer object and -1 if not yet finished, 0 if same, and 1 if not.
         """
+
         if self.species.wellorts:
             job = 'conf/' + self.species.name + '_r' + str(index).zfill(self.zf) + '_' + str(self.cyc_conf_index[index]).zfill(self.zf)
         else:
@@ -177,6 +184,7 @@ class Conformers:
                     logging.debug('Conformer too far from original structure {}'.format(job))
                     return np.zeros((self.species.natom, 3)), 1
 
+
     def check_ring_conformers(self, wait=0):
         """
         Check if the conformer optimizations finished.
@@ -189,6 +197,7 @@ class Conformers:
 
         wait: wait for all the conformer calculations to finish before returning anything
         """
+
         if len(self.cyc_conf_status) < self.cyc_conf:
             for i in range(self.cyc_conf):
                 self.cyc_conf_status.append(-1)
@@ -220,21 +229,26 @@ class Conformers:
                 else:
                     return 0, np.zeros((self.species.natom, 3))
 
+
     def generate_conformers(self, rotor, cart):
         """
         Generate guesses for all of the canonical conformers.
         This is a recursive routine to generate them.
         rotor: the rotor number in the order it was discovered
         """
+
         if len(self.species.conf_dihed) > self.max_dihed:
             self.generate_conformers_random_sampling(cart)
             return 0
 
-        if rotor == len(self.species.conf_dihed):
-            self.qc.qc_conf(self.species, cart, self.conf)
+        if rotor == len(self.species.conf_dihed):  # the end point of the recursion
+            self.qc.qc_conf(self.species, cart, self.conf, freq=0)  # TODO add MP2 flags!!!
             self.conf += 1
             return 0
 
+        # TODO: it would be nice to write this in a loop, and then the user could
+        # control how many divisions to take in the 360 degree space
+        # low priority, since these 3 steps are adequate for most cases
         cart = np.asarray(cart)
         zmat_atom, zmat_ref, zmat, zmatorder = zmatrix.make_zmat_from_cart(self.species, rotor, cart, 1)
 
@@ -262,10 +276,12 @@ class Conformers:
 
         return 0
 
+
     def generate_conformers_random_sampling(self, ini_cart):
         """
         Generate a random sampling of each dihedral for a number nconfs of conformers
         """
+
         for ni in range(self.nconfs):
             cart = copy.deepcopy(ini_cart)
             if ni == 0:
@@ -281,16 +297,28 @@ class Conformers:
                     if zmat_ref[i][2] == 1:
                         zmat[i][2] += sample[rotor]
                 cart = zmatrix.make_cart_from_zmat(zmat, zmat_atom, zmat_ref, self.species.natom, self.species.atom, zmatorder)
-            self.qc.qc_conf(self.species, cart, self.conf)
+            self.qc.qc_conf(self.species, cart, self.conf, freq=0)  # TODO also add MP2 flag
             self.conf += 1
 
         return 0
 
-    def test_conformer(self, conf):
+
+    def test_conformer(self, conf, freq=0):
         """
         Test whether a conformer has the same bond matrix as the original structure.
-        Returns the conformer object and -1 if not yet finished, 0 if same, and 1 if not.
+        Returns 
+        -1 if not yet finished, 
+        0 if same,
+        10 if not
+        1 if freq running
+        11 if freq success
+        12 if freq fail
+        and the geometry.
+    
+        if freq=1 then it is looking at the frequencies
+
         """
+
         if self.species.wellorts:
             job = 'conf/' + self.species.name + '_' + str(conf).zfill(self.zf)
         else:
@@ -298,15 +326,30 @@ class Conformers:
 
         status, geom = self.qc.get_qc_geom(job, self.species.natom)
         if status == 1:  # still running
-            return np.zeros((self.species.natom, 3)), -1
-        elif status == -1:  # conformer search failed
-            return np.zeros((self.species.natom, 3)), 1
-        else:
-            # check if all the bond lenghts are withing 10% or the original bond lengths
-            if geometry.equal_geom(self.species.bond, self.species.geom, geom, 0.10):
-                return geom, 0
-            else:
+            if freq:
                 return np.zeros((self.species.natom, 3)), 1
+            else:
+                return np.zeros((self.species.natom, 3)), -1
+        elif status == -1:  # conformer search failed
+            return np.zeros((self.species.natom, 3)), 10
+        else:  # normal termination
+            if freq:
+                status, zpe = self.qc.get_qc_zpe(job)
+                status, frequencies = self.qc.get_qc_freq(job)
+                if self.wellorts:
+                    if frequencies[0] > 0. or frequencies[1] < 0.:
+                        return np.zeros((self.species.natom, 3)), 10  # wrong number for imag freq
+                elif frequencies[0] < 0.:
+                    return np.zeros((self.species.natom, 3)), 10  # wrong number for imag freq
+                else:
+                    return geom, 0
+            else:
+                # check if all the bond lenghts are withing 10% or the original bond lengths
+                if geometry.equal_geom(self.species.bond, self.species.geom, geom, 0.10):
+                    return geom, 0
+                else:
+                    return np.zeros((self.species.natom, 3)), 10
+
 
     def check_conformers(self, wait=0):
         """
@@ -320,19 +363,33 @@ class Conformers:
 
         wait: wait for all the conformer calculations to finish before returning anything
         """
+
+        # TODO why is this like this?
         if len(self.conf_status) < self.conf:
             for i in range(len(self.conf_status), self.conf):
                 self.conf_status.append(-1)
         status = self.conf_status
 
+        geom = [np.zeros((self.species.natom, 3)) for st in status] # create placeholder for geoms
+
         while 1:
             # check if conformational search is finished
             for i, si in enumerate(status):
                 if si == -1:
-                    status[i] = self.test_conformer(i)[1]
-            if all([si >= 0 for si in status]):
-                lowest_energy = self.species.energy
+                    geom[i], status[i] = self.test_conformer(i)
+            for i, si in enumerate(status):
+                if si == 0:  # was a success but there is not frequency yet
+                    # submit a frequency calculation
+                    self.qc.qc_conf(self.species, geom[i], i, freq=1)  # TODO add MP2 flags!!!
+                    status[i] = 1  # meaning that frequency calculation has started
+            for i, si in enumerate(status):
+                if si == 1:
+                    status[i] = self.test_conformer(i, freq=1)[1]
+
+            if all([si >= 10 for si in status]):  # all are done
+                lowest_energy = self.species.energy + self.species.zpe
                 lowest_e_geom = self.species.geom
+                lowest_job = ''  # name of the job that is the lowest energy conformer
                 final_geoms = []  # list of all final conformer geometries
                 energies = []
                 for ci in range(self.conf):
@@ -343,17 +400,22 @@ class Conformers:
                         else:
                             job = 'conf/' + str(self.species.chemid) + '_' + str(ci).zfill(self.zf)
                         err, energy = self.qc.get_qc_energy(job)
+                        err, zpe = self.qc.get_qc_zpe(job)
                         err, geom = self.qc.get_qc_geom(job, self.species.natom)
                         final_geoms.append(geom)
-                        energies.append(energy)
+                        energies.append(energy + zpe)
                         if energy < lowest_energy:
                             lowest_energy = energy
                             lowest_e_geom = geom
+                            lowest_job = job
                     else:
                         energies.append(0.)
                         final_geoms.append(np.zeros((self.species.natom, 3)))
 
                 self.write_profile(status, final_geoms, energies)
+                # copy the lowest energy geometry to the main directory
+                copyfile('{}.log'.format(job), '../{}.log'.format(job))
+                # the original file is not overwritten, but the geometry is updated in KinBot's memory
                 return 1, lowest_e_geom
             else:
                 if wait:
@@ -361,10 +423,12 @@ class Conformers:
                 else:
                     return 0, np.zeros((self.species.natom, 3))
 
+
     def write_profile(self, status, final_geoms, energies, ring=0):
         """
         Write a molden-readable file with the CONF analysis (geometries and energies)
         """
+
         r = ''
         if ring:
             r = 'r'
