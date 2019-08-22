@@ -24,7 +24,7 @@ for f in change:
 #!/usr/bin/env python3
 
 
-from sella.aseopt import Sella
+from sella import Sella
 
 #myatoms.calc = calc
 
@@ -39,10 +39,7 @@ elif qc == 'nwchem':
 mol.set_calculator(calc)
 outfile = '{label}.log'
 
-# everything after 'dxL' is optional
-dyn = Sella(mol, trajectory='{label}.traj', dxL=1e-4, r_trust=5e-4,
-            inc_factr=1.1, dec_factr=0.9, dec_ratio=5.0, inc_ratio=1.01,
-            order=order, eig=False)
+dyn = Sella(mol, trajectory='{label}.traj', order=order, eig=False)
 
 for converged in dyn.irun(fmax=0., steps=3000):
     # x = mol.get_positions()
