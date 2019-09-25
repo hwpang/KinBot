@@ -52,6 +52,8 @@ class Parameters:
             'title': '',
             # verbose log file
             'verbose': 0,
+            # delete intermetidate files
+            'delete_intermediate_files' : 0,
 
             # INPUT SPECIES INFOR
             # SMILES of the species
@@ -176,6 +178,15 @@ class Parameters:
             'slurm_feature': '',
             # Number of cores to run the L0-L2 qc jobs on
             'ppn': 1,
+            # All memory parameters include the units as well, they are a string
+            # Memory for AM1
+            'mem0': '1000i MW',
+            # Memory for search
+            'mem': '1000 MW',
+            # Memory for MP2 for MP2
+            'memmp2': '1000 MW',
+            # Memory for HL
+            'memhl': '1000 MW',
             # Number of cores to run the L3 qc jobs on
             'single_point_ppn': 1,
             # This many spaces can be used for numbering files, e.g., in ga

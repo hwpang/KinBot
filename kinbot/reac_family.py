@@ -41,9 +41,7 @@ def carry_out_reaction(rxn, step, command):
         status = rxn.qc.check_qc(rxn.instance_name)
         if status != 'normal' and status != 'error': return step
 
-    #kwargs = rxn.qc.get_qc_arguments(   rxn.instance_name, rxn.species.mult, rxn.species.charge, ts = 1,
-    #                                    step = step, max_step=rxn.max_step, scan = rxn.scan)
-    
+    skipped = 0
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
             if rxn.qc.check_qc(rxn.instance_name) == 'normal': 
@@ -54,6 +52,7 @@ def carry_out_reaction(rxn, step, command):
                     return step
         if rxn.skip and len(rxn.instance) < 4: 
             step = 12
+            skipped = 1
         geom = rxn.species.geom
     else:
         err, geom = rxn.qc.get_qc_geom(rxn.instance_name, rxn.species.natom, allow_error = 1)
@@ -77,30 +76,17 @@ def carry_out_reaction(rxn, step, command):
             for c in change:
                 fix.append(c[:-1])
             change = []
-        
-        
-        kwargs['fix'] = fix
-        kwargs['change'] = change
-        kwargs['release'] = release
-
-        if step < rxn.max_step:
-            assemble_ase_template(rxn.instance_name, 'reac', self.sella, ts=0, fix=fix, change=change, dummy=[], step=step, max_step=rxn.max_step)
-            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_search.py.tpl'.format(qc=rxn.qc.qc))
-            #template = open(template_file,'r').read()
+        if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
+        elif step == 0 or skipped:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
+        elif step < rxn.max_step:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
         else:
-            assemble_ase_template(rxn.instance_name, 'ts', self.sella, ts=1, fix=[], change=[], dummy=[], step=step, max_step=rxn.max_step)
-            #template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc=rxn.qc.qc))
-            #template = open(template_file,'r').read()
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
         
-        #template = template.format(label=rxn.instance_name, 
-        #                           kwargs=kwargs, 
-        #                           atom=list(rxn.species.atom), 
-        #                           geom=list([list(gi) for gi in geom]), 
-        #                           ppn=rxn.qc.ppn,
-        #                           qc_command=command)
-
     else:
-        # use the pcobfgs algorithm for the geometry update
+        # use the pcobfgs algorithm for the geometry update, currently disabled and abandoned
         if step < rxn.max_step:
             del kwargs['opt']
             conv_crit = 0.01  # force convergence criterion 
@@ -114,12 +100,6 @@ def carry_out_reaction(rxn, step, command):
             template = open(template_file,'r').read()
             template = template.format(label = rxn.instance_name, kwargs = kwargs, atom = list(rxn.species.atom), 
                                        geom = list([list(gi) for gi in geom]), ppn = rxn.qc.ppn, qc_command=command)
-    
-    #f_out = open('{}.py'.format(rxn.instance_name),'w')
-    #f_out.write(template)
-    #f_out.close()
-    
-    step += rxn.qc.submit_qc(rxn.instance_name, 0)
     
     return step
     

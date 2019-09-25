@@ -62,12 +62,75 @@ class QuantumChemistry:
         self.sella = par.par['sella']
         self.mult = par.par['mult']
         self.charge = par.par['charge']
+        self.calcall_ts = par.par['calcall_ts']
+        self.guessmix = par.par['guessmix']
+
+        self.mem0 = par.par['mem0'].split()[0]
+        self.mem0u = par.par['mem0'].split()[1]
+        self.mem = par.par['mem'].split()[0]
+        self.memu = par.par['mem'].split()[1]
+        self.memmp2 = par.par['memmp2'].split()[0]
+        self.memmp2u = par.par['memmp2'].split()[1]
+        self.memhl = par.par['memhl'].split()[0]
+        self.memhlu = par.par['memhl'].split()[1]
+
         # sometimes there is no slurm feature at all
         if par.par['slurm_feature'] == '':
             self.slurm_feature = ''
         else:
             self.slurm_feature = '#SBATCH -C ' + par.par['slurm_feature']
+
+
+    def qc_opt(self, species, geom, high_level=0, mp2=0):
+        """ 
+        Creates a geometry optimization input and runs it. 
+        """
+       
+        if species.wellorts == 0:
+            job = str(species.chemid) + '_well'
+            if mp2:
+                job += '_mp2'
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            elif high_level:
+                job = '_high'
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
+        else:
+            job = str(species.name)
+            if mp2:
+                job += '_mp2'
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+            elif high_level:
+                job += '_high'
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+            else:
+                self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
         
+        return 0
+
+
+    def qc_freq(self, species, geom, high_level=0, mp2=0):
+        """ 
+        Creates a frequency calculation and runs it. Always done with internal calculation of the qc code.
+        """
+
+        if species.wellorts == 0:
+            job = str(species.chemid) + '_well'
+        else:
+            job = str(species.name)
+
+        if mp2:
+            job += '_mp2'
+            self.assemble_ase_template(job, 'freqmp2', species, geom, species.wellorts, 0, fix=[], change=[])
+        elif high_level:
+            job = '_high'
+            self.assemble_ase_template(job, 'freqhl', species, geom, species.wellorts, 0, fix=[], change=[])
+        else:
+            self.assemble_ase_template(job, 'freq', species, geom, species.wellorts, 0, fix=[], change=[])
+
+        return 0
+
 
     def qc_hir(self, species, geom, rot_index, ang_index, fix):
         """ 
@@ -129,64 +192,26 @@ class QuantumChemistry:
 
         return 0
 
-    def qc_opt(self, species, geom, high_level=0, mp2=0):
-        """ 
-        Creates a geometry optimization input and runs it. 
-        """
-        
-        job = str(species.chemid) + '_well'
-        if high_level:
-            job = str(species.chemid) + '_well_high'
-        if mp2:
-            job = str(species.chemid) + '_well_mp2'
-        
-        if mp2:
-            self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
-        elif high_level:
-            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
-        else:
-            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
-
-        return 0
 
 
-    def qc_opt_ts(self, species, geom, high_level=0):
-        """
-        Creates a ts optimization input and runs it
-        """
-        
-        job = str(species.name)
-        if high_level:
-            job += '_high'
-
-        if high_level:
-            self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
-        elif step == 0:
-            self.assemble_ase_template(job, 'preopt0', species, geom, 0, self.sella, ts=0, fix=[], change=[])
-        elif step < max_step:
-            self.assemble_ase_template(job, 'preopt', species, geom, 0, self.sella, ts=0, fix=[], change=[])
-        else:
-            self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, ts=0, fix=[])
-
-        return 0
-
-    def submit_qc(self, job, singlejob=1):
+    def submit_qc(self, job, mem, memu, singlejob=1):
         """
         Submit a job to the queue, unless the job:
             * has finished with Normal termination
             * has finished with Error termination
             * is currently running
         However, if the optional parameter singlejob is set to zero, then 
-        the job is run only if it has finished earlier with normal termination.
+        the job is run only if it has finished. It might have been successful or not. (??)
         This is for continuations, when the continuing jobs overwrite each other.
         """
 
         check = self.check_qc(job)
         if singlejob == 1:
-            if check != 0: return 0
+            if check != 0: 
+                return 0  # either normal or error termination, but is in database and done
         else:
-            if check == 'running': return 0
-
+            if check == 'running': 
+                return 0  # still running
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -202,15 +227,25 @@ class QuantumChemistry:
         template_file = pkg_resources.resource_filename('tpl', self.queuing + '_python.tpl')
         python_file = '{}.py'.format(job)
         
-        python_template = open(template_head_file, 'r').read() 
         python_template = open(template_head_file, 'r').read() + open(template_file, 'r').read()
 
         if self.queuing == 'pbs':
-            python_template = python_template.format(   name=job, ppn=self.ppn, queue_name=self.queue_name, 
-                                                        dir='perm', python_file=python_file, arguments='' )
+            python_template = python_template.format(name=job, 
+                                                     ppn=self.ppn, 
+                                                     queue_name=self.queue_name, 
+                                                     dir='perm', 
+                                                     python_file=python_file, 
+                                                     arguments='',
+                                                     mem='{}{}'.format(mem, memu))
         elif self.queuing == 'slurm':
-            python_template = python_template.format(   name=job, ppn=self.ppn, queue_name=self.queue_name, dir='perm', 
-                                                        slurm_feature=self.slurm_feature, python_file=python_file, arguments='' )
+            python_template = python_template.format(name=job, 
+                                                     ppn=self.ppn, 
+                                                     queue_name=self.queue_name, 
+                                                     dir='perm', 
+                                                     slurm_feature=self.slurm_feature, 
+                                                     python_file=python_file, 
+                                                     arguments='',
+                                                     mem='{}{}'.format(mem, memu))
         else:
             logging.error('KinBot does not recognize queuing system {}.'.format(self.queuing))
             logging.error('Exiting')
@@ -453,9 +488,10 @@ class QuantumChemistry:
         if self.qc == 'gauss':
             
             fchk = str(job) + '.fchk'
-            #if not os.path.exists(fchk):
+            chk = str(job) + '.chk'
+            if os.path.exists(chk):
             #create the fchk file using formchk
-            os.system('formchk ' + job + '.chk > /dev/null')
+                os.system('formchk ' + job + '.chk > /dev/null')
             
             with open(fchk) as f:
                 lines = f.read().split('\n')
@@ -499,6 +535,9 @@ class QuantumChemistry:
     def check_qc(self, job):
         """
         Checks the status of the qc job.
+        0: not in database (yet)
+        'running'
+        data['status'] can be 'normal' or 'error'
         """
         if self.qc == 'gauss':
             log_file = job + '.log'
@@ -566,126 +605,226 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix, change):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[]):
         """
         Assemble the template for an ASE.
         """
 
         atom = copy.deepcopy(species.atom)
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
+        wellorts = bool(wellorts)
+
+        # certain tasks cannot (yet) be performed by sella, therefore
+        nosella = ['ircf', 'ircr', 'ircfmp2', 'ircrmp2', 'freq', 'freqmp2', 'freqhigh']
+        if task in nosella:
+            sella = 0
 
         # TASKS AND OPTIONS
+        # OPTIMIZATIONS
         if task == 'opt':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 1
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = False
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            if wellorts:
+                singlejob = False
+            else:
+                singlejob = True
+            mem = self.mem
+            memu = self.memu
 
         elif task == 'optmp2':
             method = 'mp2'
             basis = self.basis 
             integral = ''
-            opt = 1
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = False
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
 
         elif task == 'opthl':
             method = self.high_level_method
             basis = self.high_level_basis
             integral = self.integral
-            opt = 1
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 1
+            freq = False
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = True
+            mem = self.memhl
+            memu = self.memhlu
 
         elif task == 'preopt0':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 1
             order = 0
-            freq = 0
-            guess = 0
-            chk = 1
+            freq = False
+            guess = False
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = False
+            mem = self.mem0
+            memu = self.mem0u
 
         elif task == 'preopt':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 1
             order = 0
-            freq = 0
-            guess = 1
-            chk = 1
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = False
+            mem = self.mem0
+            memu = self.mem0u
 
-        #CONFORMERS
+        # FREQUENCY
+
+        if task == 'freq':
+            method = self.method
+            basis = self.basis 
+            integral = ''
+            order = -1
+            freq = True
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.mem
+            memu = self.memu
+
+        elif task == 'freqmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = -1
+            freq = True
+            guess =  True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.memmp2
+            memu = self.memmp2u
+
+        elif task == 'freqhl':
+            method = self.high_level_method
+            basis = self.high_level_basis
+            integral = self.integral
+            order = -1
+            freq = True
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = False
+            mem = self.memhl
+            memu = self.memhlu
+
+        # CONFORMERS
+
         elif task == 'conf':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 1
             order = wellorts
-            freq = 1
-            guess = 0
-            chk = 0
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 2
-            singlejob = 0
+            singlejob = True
+            mem = self.mem
+            memu = self.memu
 
         elif task == 'ringconf':
             method = 'am1'
             basis = ''
             integral = ''
-            opt = 0
             order = 0
-            freq = 0
-            guess = 0
-            chk = 0
+            freq = False
+            guess = False
+            chk = False
             maxattempt = 1
-            singlejob = 0
+            singlejob = True
+            mem = self.mem0
+            memu = self.mem0u
 
         # HINDERED ROTORS
         elif task == 'hir':
             method = self.high_level_method
             basis = self.high_level_basis 
             integral = self.integral
-            opt = 1
             order = wellorts
-            freq = 0
-            guess = 0
-            chk = 0
+            freq = False
+            guess = False
+            chk = False
             maxattempt = 2
-            singlejob = 0
+            singlejob = True
+            mem = self.mem
+            memu = self.memu
  
         # IRC
-        elif task == 'irc':
+        elif task == 'ircf' or task == 'ircr':
             method = self.method
             basis = self.basis 
             integral = ''
-            opt = 0
-            order = 0
-            freq = 0
-            guess = 1
-            chk = 1
+            order = -1  # do not optimize
+            freq = False
+            guess = True
+            chk = True
             maxattempt = 1
-            singlejob = 1
+            singlejob = True
+            mem = self.mem
+            memu = self.memu
 
+        elif task == 'ircfmp2' or task == 'ircrmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = -1  # do not optimize
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
+ 
+        # IRC PRODUCT
+        elif task == 'prodirc':
+            method = self.method
+            basis = self.basis 
+            integral = ''
+            order = 0  
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+            mem = self.mem
+            memu = self.memu
+
+        elif task == 'prodircmp2':
+            method = 'mp2'
+            basis = self.basis 
+            integral = ''
+            order = 0  
+            freq = False
+            guess = True
+            chk = True
+            maxattempt = 1
+            singlejob = True
+            mem = self.memmp2
+            memu = self.memmp2u
 
         # TEMPLATES 
         
@@ -706,13 +845,9 @@ class QuantumChemistry:
             with open(qc_translate_qc) as f:
                 tpl_qc = f.read()
 
-        calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
-        with open(calc) as f:
-            tpl_calc = f.read()        
-            
-        qc_read = pkg_resources.resource_filename('tpl', 'ase_{qc}_read.tpl.py'.format(qc = self.qc))
-        with open(qc_read) as f:
-            tpl_read = f.read()
+        qc_calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
+        with open(qc_calc) as f:
+            tpl_calc = f.read()
 
         if sella:
             task_sella = pkg_resources.resource_filename('tpl', 'ase_task_sella.tpl.py')
@@ -723,59 +858,53 @@ class QuantumChemistry:
             with open(task_qc) as f:
                 tpl_task = f.read()
 
-        if sella:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_sella_constraint.tpl.py')
-            with open(constraint) as f:
-                tpl_constraint = f.read()
-        else:
-            constraint = pkg_resources.resource_filename('tpl', 'ase_{qc}_constraint.tpl.py'.format(qc = self.qc))
-            with open(constraint) as f:
-                tpl_constraint = f.read()
-
-
-        done = pkg_resources.resource_filename('tpl', 'ase_done.tpl.py'.format(qc = self.qc))
-        with open(done) as f:
-            tpl_done = f.read()
+        write_db = pkg_resources.resource_filename('tpl', 'ase_write_db.tpl.py') 
+        with open(write_db) as f:
+            tpl_write_db = f.read()
 
         #ASSEMBLE TEMPLATES
 
-        template = tpl_header + tpl_translate + tpl_qc + tpl_calc + tpl_constraint + tpl_task + tpl_done + tpl_read
+        template = '{}{}{}{}{}{}'.format(tpl_header, tpl_translate, tpl_qc, tpl_calc, tpl_task, tpl_write_db)
 
         #SUBSTITUTE TEMPLATES 
-        #CalcAll TODO
-
-        template = template.format(label=job, 
-                                   atom=list(atom), 
-                                   geom=list([list(gi) for gi in geom]),
-                                   ppn=self.ppn,
-                                   method=method,
-                                   basis=basis,
-                                   mult=self.mult,
-                                   charge=self.charge,
-                                   chk=chk,
-                                   guess=guess,
-                                   integral=integral,
-                                   dummy=dummy,
-                                   sella=self.sella,
-                                   order=order,
-                                   freq=freq,
-                                   task=task,
-                                   irc_maxpoints=self.irc_maxpoints,
-                                   irc_stepsize=self.irc_stepsize,
-                                   qc=self.qc,
-                                   fix=fix,
-                                   change=change,
-                                   maxattempt=maxattempt,
-                                   qc_command=self.qc_command)
+        
+        if 1:  # THIS IS JUST HERE WHILE TESTING, WILL NEED TO DELETE AND UNINDENT
+            template = template.format(label=job, 
+                                       atom=list(atom), 
+                                       geom=[list(gi) for gi in geom], 
+                                       ppn=self.ppn,
+                                       method=method,
+                                       basis=basis,
+                                       mult=self.mult,
+                                       charge=self.charge,
+                                       chk=chk,
+                                       guess=guess,
+                                       integral=integral,
+                                       dummy=dummy,
+                                       sella=self.sella,
+                                       order=order,
+                                       freq=freq,
+                                       task=task,
+                                       irc_maxpoints=self.irc_maxpoints,
+                                       irc_stepsize=self.irc_stepsize,
+                                       qc=self.qc,
+                                       fix=fix,
+                                       change=change,
+                                       release=release,
+                                       maxattempt=maxattempt,
+                                       qc_command=self.qc_command,
+                                       guessmix=self.guessmix,
+                                       calcall_ts=self.calcall_ts,
+                                       mem=mem,
+                                       memu=memu)
 
 
         f_out = open('{}.py'.format(job),'w')
         f_out.write(template)
         f_out.close()
 
-        self.submit_qc(job, singlejob)
-
-        return 
+        # this will return the same number as submit_qc
+        return self.submit_qc(job, mem, memu, singlejob)
 
 
 

@@ -116,6 +116,3 @@ class IntraDielsAlder:
         return step, fix, change, release
 
        
-        step += submit_qc(self.instance_name, 0)
-        
-        return step

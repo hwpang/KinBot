@@ -92,9 +92,19 @@ class ReactionGenerator:
                     
                     if obj.scan == 0: #don't do a scan of a bond
                         if self.species.reac_step[index] == obj.max_step + 1:
-                            status = self.qc.get_qc_freq(instance_name, self.species.natom)[0]
+                            status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0:
-                                self.species.reac_ts_done[index] = 1
+                                # start freq calculation
+                                # if success
+                                    # read freq
+                                    # if one negative
+                                        self.species.reac_ts_done[index] = 1
+                                    # if not
+                                        logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                # if not success
+                                    self.species.reac_ts_done[index] = -999
+                                    logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
@@ -103,9 +113,19 @@ class ReactionGenerator:
                     
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
-                            status = self.qc.get_qc_freq(instance_name, self.species.natom)[0]
+                            status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0:
-                                self.species.reac_ts_done[index] = 1
+                                # start freq calculation
+                                # if success
+                                    # read freq
+                                    # if one negative
+                                        self.species.reac_ts_done[index] = 1
+                                    # if not
+                                        logging.info('\tNot the right number of imeginary frequencies for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                # if not success
+                                    self.species.reac_ts_done[index] = -999
+                                    logging.info('\tRxn search failed for {}'.format(instance_name))
                             elif status == -1:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
@@ -153,18 +173,27 @@ class ReactionGenerator:
                             elif irc_status[0] == 'running' or irc_status[1] == 'running':
                                 continue
                             else: 
-                                #IRC's have successfully finished, have an error or were killed, in any case
-                                #read the geometries and try to make products out of them
-                                #verify which of the ircs leads back to the reactant, if any
-                                prod = obj.irc.irc2stationary_pt()
-                                if prod == 0:
-                                    logging.info('\t\tNo product found for {}'.format(instance_name))
-                                    self.species.reac_ts_done[index] = -999
+                                #The main IRC calculation is done, now onto IRC products
+                                #It was either 'normal' or 'error'
+                                #TODO not allowing unfinished jobs!!!
+                                irc_prod_status = obj.irc.check_irc_prod()
+                                if 0 in irc_prod_status:
+                                    logging.info('\t\tStarting IRC product calculations for {}'.format(instance_name))
+                                    obj.irc.do_irc_prod_calculations()
+                                elif irc_prod_status[0] == 'running' or irc_status[1] == 'running':
+                                    continue
                                 else:
-                                    #IRC's are done
-                                    obj.products = prod
-                                    obj.product_bonds = prod.bond
-                                    self.species.reac_ts_done[index] = 2
+                                    #read the geometries and try to make products out of them
+                                    #verify which of the ircs leads back to the reactant, if any
+                                    prod = obj.irc.irc2stationary_pt()
+                                    if prod == 0:
+                                        logging.info('\t\tNo product found for {}'.format(instance_name))
+                                        self.species.reac_ts_done[index] = -999
+                                    else:
+                                        #IRC's are done
+                                        obj.products = prod
+                                        obj.product_bonds = prod.bond
+                                        self.species.reac_ts_done[index] = 2
                 elif self.species.reac_ts_done[index] == 2:
                     #identify bimolecular products and wells
                     fragments, maps = obj.products.start_multi_molecular()
@@ -172,6 +201,7 @@ class ReactionGenerator:
                     for i, frag in enumerate(fragments):
                         obj.products.append(frag)
                         self.qc.qc_opt(frag, frag.geom)
+                        # TODO add qc_freq in the cycle
                     
                     self.species.reac_ts_done[index] = 3
                 elif self.species.reac_ts_done[index] == 3:
@@ -314,8 +344,9 @@ class ReactionGenerator:
                         postprocess.createPESViewerInput(self.species, self.qc, self.par)
                 elif self.species.reac_ts_done[index] == -999:
                     if not self.species.reac_obj[index].instance_name in deleted:
-                        self.delete_files(self.species.reac_obj[index].instance_name)
-                        deleted.append(self.species.reac_obj[index].instance_name)
+                        if self.par.par['delete_intermediate_files'] == 1:
+                            self.delete_files(self.species.reac_obj[index].instance_name)
+                            deleted.append(self.species.reac_obj[index].instance_name)
                         
             alldone = 1
             for index, instance in enumerate(self.species.reac_inst):

@@ -68,6 +68,7 @@ class Optimize:
         self.scycconf = -1
         self.sconf = -1
         self.shigh = -1
+        self.sfreqhigh = -1
         self.shir = -1
 
         # restart counter: number of times the high-level and hir calculations
@@ -104,7 +105,7 @@ class Optimize:
                     if status:
                         # ring conf search is finished
                         self.scycconf = 1
-                # do the open chain par of the molecule
+                # do the open chain part of the molecule
                 if self.scycconf == 1:
                     # do open chain part if cyclic part is done
                     if self.sconf == -1:
@@ -135,12 +136,8 @@ class Optimize:
                         if self.shigh == -1:
                             # high level calculation did not start yet
                             logging.info('\tStarting high level optimization of {}'.format(self.species.name))
-                            if self.species.wellorts:
-                                # do the high level optimization of a ts
-                                self.qc.qc_opt_ts(self.species, self.species.geom, high_level=1)
-                            else:
-                                # do the high level optimization of a well
-                                self.qc.qc_opt(self.species, self.species.geom, high_level=1)
+                            # do the high level optimization of a ts
+                            self.qc.qc_opt(self.species, self.species.geom, high_level=1)
                             self.shigh = 0  # set the high status to running
                         if self.shigh == 0:
                             # high level calculation is running
@@ -150,6 +147,7 @@ class Optimize:
                                 # found an error
                                 logging.info('\tHigh level optimization failed for {}'.format(self.species.name))
                                 self.shigh = -999
+                                self.sfreqhigh = -999
                             if status == 'normal':
                                 # finished successfully
                                 err, new_geom = self.qc.get_qc_geom(self.job_high, self.species.natom, wait=self.wait)
@@ -157,17 +155,35 @@ class Optimize:
                                     # geometry is as expected
                                     err, self.species.geom = self.qc.get_qc_geom(self.job_high, self.species.natom)
                                     err, self.species.energy = self.qc.get_qc_energy(self.job_high)
-                                    err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
-                                    err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
-                                    self.shigh = 1
+                                    if self.sfreqhigh == -1:
+                                        # high level frequency did not start yet
+                                        logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
+                                        # do the high level freq of a ts
+                                        self.qc.qc_freq(self.species, self.species.geom, high_level=1)
+                                        self.sfreqhigh = 0 # set the freq high status to running
+                                    if self.sfreqhigh == 0:
+                                        # freq high level is running
+                                        # check if it finished
+                                        status = self.qc.check_qc(self.job_high)
+                                        if status == 'error':
+                                            # found an error
+                                            logging.info('\tHigh level frequency calculation failed for {}'.format(self.species.name))
+                                            self.sfreqhigh = -999
+                                        if status == 'normal':
+                                            # finished successfully
+                                            err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
+                                            err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
+                                            self.sfreqhigh = 1
                                 else:
                                     # geometry diverged to other structure
                                     logging.info('\tHigh level ts optimization converged to different structure for {}'.format(self.species.name))
                                     self.shigh = -999
+                                    self.sfreqhigh = -999
                     else:
                         # no high-level calculations necessary, set status to finished
                         self.shigh = 1
-                    if self.shigh == 1:
+                        self.sfreqhigh = 1
+                    if self.shigh == 1 and self.sfreqhigh == 1:
                         # do the HIR calculation
                         if self.par.par['rotor_scan'] == 1:
                             if self.shir == -1:
@@ -226,7 +242,7 @@ class Optimize:
                         else:
                             # no hir calculations necessary, set status to finished
                             self.shir = 1
-                    if not self.wait or self.shir == 1 or self.shigh == -999:
+                    if not self.wait or self.shir == 1 or self.shigh == -999 or self.shigh == -999:
                         # break the loop if no waiting is required or
                         # if the hir calcs are done or
                         # if the high level calc failed
@@ -257,8 +273,7 @@ class Optimize:
                         self.species.energy = molpro_energy
                 
                 # delete unnecessary files
-                delete = 1
-                if delete:
+                if self.par.par['delete_intermediate_files'] == 1:
                     self.delete_files()
             if self.wait:
                 if self.shir == 1 or self.shigh == -999:
@@ -279,7 +294,7 @@ class Optimize:
             names.append(self.species.name + '_IRC_F_prod')
             names.append(self.species.name + '_IRC_R_prod')
             
-            if self.par.par['high_level'] == 1:
+            if self.par.par['rotor_scan'] == 1:
                 for count in range(self.species.hir.nrotation):
                     for rot_num in range(self.par.par['nrotation']):
                         names.append('hir/' + self.species.name + '_hir_' + str(count) + '_' + str(rot_num).zfill(2))
@@ -291,8 +306,9 @@ class Optimize:
                         names.append('conf/' + self.species.name + '_r' + str(count).zfill(zf) + '_' + str(num).zfill(zf))
         else:
             names.append(str(self.species.chemid) + '_well')
+            names.append(str(self.species.chemid) + '_well_mp2')
             names.append(str(self.species.chemid) + '_well_high')
-            if self.par.par['high_level'] == 1:
+            if self.par.par['rotor_scan'] == 1:
                 for count in range(self.species.hir.nrotation):
                     for rot_num in range(self.par.par['nrotation']):
                         names.append('hir/' + str(self.species.chemid) + '_hir_' + str(count) + '_' + str(rot_num).zfill(2))

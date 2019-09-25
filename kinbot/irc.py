@@ -134,8 +134,55 @@ class IRC:
             odft = self.rxn.species.mult > 1
 
             if direction == 'Forward':
-                self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.rxn.species, geom, self.wellorts, self.sella, fix, change=[])
+                if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+                    self.rxn.qc.assemble_ase_template(irc_name, 'ircfmp2', self.rxn.species, geom, 0, self.par.par['sella'])
+                else:
+                    self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.rxn.species, geom, 0, self.par.par['sella'])
             else:
-                self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.rxn.species, geom, self.wellorts, self.sella, fix, change=[])
+                if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+                    self.rxn.qc.assemble_ase_template(irc_name, 'ircrmp2', self.rxn.species, geom, 0, self.par.par['sella'])
+                else:
+                    self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.rxn.species, geom, 0, self.par.par['sella'])
+
+        return 0
+
+
+    def check_irc_prod(self):
+        instance_name = self.rxn.instance_name
+        directions = ['Forward', 'Reverse']
+        status = [-1, -1]
+        for i, direction in enumerate(directions):
+            irc_prod_name = '{}_IRC_{}_prod'.format(instance_name, direction[0])
+            status[i] = self.rxn.qc.check_qc(irc_prod_name)
+        return status
+
+
+    def do_irc_prod_calculations(self):
+        """
+        Carry out the product optimization for the IRCs in both directions
+        """
+        instance_name = self.rxn.instance_name
+        directions = ['Forward', 'Reverse']
+        for i, direction in enumerate(directions):
+            irc_name = '{}_IRC_{}'.format(instance_name, direction[0])
+            err, geom = self.rxn.qc.get_qc_geom(irc_name,
+                                                self.rxn.species.natom, wait=0, allow_error=1)
+            irc_prod_name = '{}_IRC_{}_prod'.format(instance_name, direction[0])
+            if self.rxn.qc.qc == 'gauss':
+                # copy the chk file
+                try: 
+                    copyfile(irc_name + '.chk', irc_prod_name + '.chk')
+                except:
+                    logging.info('\tIRC checkpoint file is not present for {}.'.format(irc_name))
+
+            if self.rxn.qc.qc == 'nwchem' and direction == 'Reverse':
+                direction = 'Backward'
+
+            odft = self.rxn.species.mult > 1
+
+            if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+                self.rxn.qc.assemble_ase_template(irc_prod_name, 'prodircmp2', self.rxn.species, geom, 0, self.par.par['sella'])
+            else:
+                self.rxn.qc.assemble_ase_template(irc_prod_name, 'prodirc', self.rxn.species, geom, 0, self.par.par['sella'])
 
         return 0
