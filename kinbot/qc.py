@@ -863,7 +863,9 @@ class QuantumChemistry:
             with open(qc_translate_qc) as f:
                 tpl_qc = f.read()
         else:
-            tpl_qc = ''
+            qc_translate_qc = pkg_resources.resource_filename('tpl', 'ase_none.tpl.py'.format(qc = self.qc))
+            with open(qc_translate_qc) as f:
+                tpl_qc = f.read()
 
         qc_calc = pkg_resources.resource_filename('tpl', 'ase_calc.tpl.py')
         with open(qc_calc) as f:
