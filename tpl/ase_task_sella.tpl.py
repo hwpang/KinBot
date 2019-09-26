@@ -39,8 +39,19 @@ elif qc == 'nwchem':
 mol.set_calculator(calc)
 outfile = '{label}.log'
 
-dyn = Sella(mol, trajectory='{label}.traj', order=order, eig=False)
+# delta0: the initial step size, default is 1e-1 for minimization 
+#         and 1.3e-3 for saddle point
+#         likely need to change the minimization default to smaller
+# gamma: the convergence criterion for the Hessian, default is 0.4
+#        For molecular systems it needs to be smaller. Max is about 100, min is 1e-15
+if order: # saddle point
+    dyn = Sella(mol, trajectory='{label}.traj', order=order, eig=False, gamma=1e-2)
+else:
+    dyn = Sella(mol, trajectory='{label}.traj', order=order, eig=False, delta0=1e-3)
 
+# fmax: optimization ends if the forces are below the threshold
+#       If set to zero, then it is not likely to cut the loop
+# steps: optimization ends if the number of steps reaches it
 for converged in dyn.irun(fmax=0., steps=3000):
     # x = mol.get_positions()
     # f = mol.get_forces()
@@ -55,30 +66,7 @@ for converged in dyn.irun(fmax=0., steps=3000):
     # vecs = dyn.mm.vecs
 
     if reader_{qc}.read_convergence(outfile) == 1:
+        success = 1
         break
-
-#from sella import MinModeAtoms, optimize
-#
-## Create a Sella MinMode object
-#myminmode = MinModeAtoms(mol,  # Your Atoms object
-#                         calc,  # Your calculator
-#                         constraints=constraints,  # Your constraints
-#                         trajectory='{label}.traj',  # Optional trajectory TODO remove option
-#                         )
-#
-## These need to be keywords in KinBot TODO
-#x1 = optimize(myminmode,    # Your MinMode object
-#              maxiter=500,  # Maximum number of force evaluations
-#              ftol=1e-3,    # Norm of the force vector, convergence threshold
-#              r_trust=5e-4, # Initial trust radius (Angstrom per d.o.f.)
-#              order=order,  # Order of saddle point to find (set to 0 for minimization)
-#              dxL=1e-4,     # Finite difference displacement magnitude (Angstrom)
-#              maxres=0.1,   # Maximum residual for eigensolver convergence (should be <= 1)
-#              eig=(order!=0), # Switch on eigensolve for saddle points only
-#              )
-#
-
-# if freq:
-    # TODO what to do?
 
 

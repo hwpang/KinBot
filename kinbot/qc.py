@@ -598,6 +598,7 @@ class QuantumChemistry:
             return 0
 
 
+    # TODO: disable this if sella=1 and sella has dummy atoms implemented
     def add_dummy(self, atom, geom, bond):
             """
             Add a dummy atom if needed to linear substructures.
@@ -621,7 +622,8 @@ class QuantumChemistry:
 
         atom = copy.deepcopy(species.atom)
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
-        wellorts = bool(wellorts)
+        print(atom)
+        print(geom)
 
         # frequency calculations are not done by sella
         nosella = [ 'freq', 'freqmp2', 'freqhigh']
@@ -903,7 +905,7 @@ class QuantumChemistry:
                                        guess=guess,
                                        integral=integral,
                                        dummy=dummy,
-                                       sella=self.sella,
+                                       sella=sella,
                                        order=order,
                                        freq=freq,
                                        task=task,
