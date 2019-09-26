@@ -623,8 +623,8 @@ class QuantumChemistry:
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
         wellorts = bool(wellorts)
 
-        # certain tasks cannot (yet) be performed by sella, therefore
-        nosella = ['ircf', 'ircr', 'ircfmp2', 'ircrmp2', 'freq', 'freqmp2', 'freqhigh']
+        # frequency calculations are not done by sella
+        nosella = [ 'freq', 'freqmp2', 'freqhigh']
         if task in nosella:
             sella = 0
 
