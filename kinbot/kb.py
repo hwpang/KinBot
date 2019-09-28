@@ -160,7 +160,7 @@ def main():
     qc.qc_opt(well0, well0.geom, mp2=1)
     err, geom = qc.get_qc_geom(str(well0.chemid) + '_well_mp2', well0.natom, 1)
     logging.info('Starting MP2 frequency calculation of intial well')
-    qc.qc_freq(well0, well0.geom, mp2=1)
+    qc.qc_freq(well0, geom, mp2=1)
     err, freq = qc.get_qc_freq(str(well0.chemid) + '_well_mp2', well0.natom, 1)
 
     # characterize again and look for differences

@@ -1,4 +1,4 @@
-# Setting up the approproate calculator
+# Setting up the appropriate calculator
 
 if qc == 'gauss':
     from ase.calculators.gaussian import Gaussian

@@ -622,8 +622,6 @@ class QuantumChemistry:
 
         atom = copy.deepcopy(species.atom)
         atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
-        print(atom)
-        print(geom)
 
         # frequency calculations are not done by sella
         nosella = [ 'freq', 'freqmp2', 'freqhigh']
@@ -749,7 +747,7 @@ class QuantumChemistry:
             integral = ''
             order = wellorts
             freq = False
-            guess = True
+            guess = False
             chk = True
             maxattempt = 2
             singlejob = True
@@ -762,7 +760,7 @@ class QuantumChemistry:
             integral = ''
             order = wellorts
             freq = False
-            guess = True
+            guess = False
             chk = True
             maxattempt = 2
             singlejob = True
