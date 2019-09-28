@@ -415,8 +415,7 @@ class Conformers:
 
                 self.write_profile(status, final_geoms, energies)
                 # copy the lowest energy geometry to the main directory
-                print('{}.log'.format(job), '../{}.log'.format(job))
-                copyfile('{}.log'.format(job), '../{}.log'.format(job))
+                # copyfile('{}.log'.format(job), '../{}.log'.format(job))
                 # the original file is not overwritten, but the geometry is updated in KinBot's memory
                 return 1, lowest_e_geom
             else:
