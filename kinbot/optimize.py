@@ -163,7 +163,7 @@ class Optimize:
                                         # high level frequency did not start yet
                                         logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
                                         # do the high level freq of a ts  TODO why ts???
-                                        self.qc.qc_freq(self.species, self.species.geom, high_level=1)
+                                        self.qc.qc_freq(self.species, str(self.species.chemid), self.species.geom, self.species.wellorts, high_level=1)
                                         self.sfreqhigh = 0 # set the freq high status to running
                                     if self.sfreqhigh == 0:
                                         # freq high level is running

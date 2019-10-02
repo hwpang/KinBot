@@ -42,7 +42,7 @@ class ReactionGenerator:
     and does IRC calculations 
     """
     
-    def __init__(self,species,par,qc):
+    def __init__(self, species, par, qc):
         self.species = species
         self.par = par
         self.qc = qc
@@ -96,7 +96,8 @@ class ReactionGenerator:
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
-                                self.qc.qc_freq(instance_name, self.geom)
+                                opt_geom = self.qc.get_qc_geom(instance_name, self.species.natom, wait=1, allow_error=0)[1]
+                                self.qc.qc_freq(self.species, instance_name, opt_geom, 1)
                                 self.species_ts_freq[index] = 1
                             elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
                                 status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
@@ -114,14 +115,15 @@ class ReactionGenerator:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
                         else: 
-                            self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'])
+                            self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'], self.par.par['sella'])
                     
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
                             if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
-                                self.qc.qc_freq(instance_name, self.geom)
+                                opt_geom = self.qc.get_qc_geom(instance_name, self.species.natom, wait=1, allow_error=0)[1]
+                                self.qc.qc_freq(self.species, instance_name, opt_geom, 1)
                                 self.species_ts_freq[index] = 1
                             elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
                                 status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
@@ -140,7 +142,7 @@ class ReactionGenerator:
                                 self.species.reac_ts_done[index] = -999
                         else:        
                             if self.species.reac_step[index] == 0:
-                                self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'])
+                                self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'], self.par.par['sella'])
                             elif self.species.reac_step[index] > 0:
                                 status = self.qc.check_qc(instance_name)
                                 if status == 'error' or status == 'killed':
@@ -153,13 +155,13 @@ class ReactionGenerator:
                                         if len(self.species.reac_scan_energy[index]) > 1:
                                             if self.species.reac_scan_energy[index][-1] < self.species.reac_scan_energy[index][-2]:
                                                 self.species.reac_step[index] = self.par.par['scan_step'] 
-                                        self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'])
+                                        self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'], self.par.par['sella'])
 
                 elif self.species.reac_ts_done[index] == 1:
                     status = self.qc.check_qc(instance_name)
                     if status == 'running': continue
                     elif status == 'error': 
-                        logging.info('\tRxn search failed (gaussian error) for {}'.format(instance_name))
+                        logging.info('\tRxn search failed (Gaussian error) for {}'.format(instance_name))
                         self.species.reac_ts_done[index] = -999
                     else: 
                         #check the barrier height:

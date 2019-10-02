@@ -29,7 +29,7 @@ import pkg_resources
 
 from kinbot import modify_geom
 
-def carry_out_reaction(rxn, step, command):
+def carry_out_reaction(rxn, step, command, sella):
     """
     Verify what has been done and what needs to be done
     
@@ -71,7 +71,7 @@ def carry_out_reaction(rxn, step, command):
             c_new = [ci - 1 for ci in c[:-1]]
             c_new.append(c[-1])
             change_starting_zero.append(c_new)
-        if len(change_starting_zero) >0 :
+        if len(change_starting_zero) > 0:
             success, geom = modify_geom.modify_coordinates(rxn.species, rxn.instance_name, geom, change_starting_zero, rxn.species.bond)
             for c in change:
                 fix.append(c[:-1])

@@ -110,24 +110,24 @@ class QuantumChemistry:
         return 0
 
 
-    def qc_freq(self, species, geom, high_level=0, mp2=0):
+    def qc_freq(self, species, name, geom, wellorts, high_level=0, mp2=0):
         """ 
         Creates a frequency calculation and runs it. Always done with internal calculation of the qc code.
         """
 
-        if species.wellorts == 0:
+        if wellorts == 0:
             job = str(species.chemid) + '_well'
         else:
-            job = str(species.name)
+            job = str(name)
 
         if mp2:
             job += '_mp2'
-            self.assemble_ase_template(job, 'freqmp2', species, geom, species.wellorts, 0, fix=[], change=[])
+            self.assemble_ase_template(job, 'freqmp2', species, geom, wellorts, 0, fix=[], change=[])
         elif high_level:
             job = '_high'
-            self.assemble_ase_template(job, 'freqhl', species, geom, species.wellorts, 0, fix=[], change=[])
+            self.assemble_ase_template(job, 'freqhl', species, geom, wellorts, 0, fix=[], change=[])
         else:
-            self.assemble_ase_template(job, 'freq', species, geom, species.wellorts, 0, fix=[], change=[])
+            self.assemble_ase_template(job, 'freq', species, geom, wellorts, 0, fix=[], change=[])
 
         return 0
 
