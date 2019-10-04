@@ -47,7 +47,6 @@ outfile = '{label}.log'
 
 # IRC
 if task[:3] == 'irc':
-
     job = '{label}'[:-6] 
     if qc == 'gauss':
         hess = reader_{qc}.read_hess(job, natom)
@@ -71,10 +70,15 @@ elif task[:4] == 'ircr':
 
 # optimization
 else:
+    try:
+        hess = np.load('{label}.npy')
+    except:
+       hess = None 
+
     if order: # saddle point
-        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=True, gamma=1e-2)
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=True, gamma=1e-2)
     else:
-        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=False, delta0=1e-3)
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=False, delta0=1e-3)
 
     if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
         if task == 'preopt0' or task == 'preopt':
@@ -92,3 +96,4 @@ else:
     if converged:
         success = 1
 
+    np.save('{label}', dyn.pes.H)
