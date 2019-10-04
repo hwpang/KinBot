@@ -788,7 +788,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = False
+            chk = True
             maxattempt = 2
             singlejob = True
             mem = self.mem

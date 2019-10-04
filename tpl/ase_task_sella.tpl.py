@@ -23,8 +23,10 @@ for f in change:
 
 #!/usr/bin/env python3
 
-
-from sella import Sella
+if task[:3] == 'irc':
+    from sella import IRC
+else:
+    from sella import Sella
 
 #myatoms.calc = calc
 
@@ -44,44 +46,42 @@ outfile = '{label}.log'
 #         likely need to change the minimization default to smaller
 # gamma: the convergence criterion for the Hessian, default is 0.4
 #        For molecular systems it needs to be smaller. Max is about 100, min is 1e-15
-if order: # saddle point
-    dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=True, gamma=1e-2)
+
+# IRC
+if task[:4] == 'ircf':
+    dyn = IRC(mol, trajectory='{label}.traj', dx=0.1, eta=1e-4, gamma=1e-2)
+    for converged in dyn.irun(fmax=0.01, steps=1000, direction='forward'):
+        if converged:
+            success = 1
+            break
+
+elif task[:4] == 'ircr':
+    dyn = IRC(mol, trajectory='{label}.traj', dx=0.1, eta=1e-4, gamma=1e-2)
+    for converged in dyn.irun(fmax=0.01, steps=1000, direction='reverse'):
+        if converged:
+            success = 1
+            break
+
+# optimization
 else:
-    dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=False, delta0=1e-3)
-
-# fmax: optimization ends if the forces are below the threshold
-#       If set to zero, then it is not likely to cut the loop
-# steps: optimization ends if the number of steps reaches it
-
-if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
-    if task == 'preopt0' or task == 'preopt':
-        fmax = 0.05
+    if order: # saddle point
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=True, gamma=1e-2)
     else:
-        fmax = 0.005
-else:
-    fmax = 0. # use Gaussian criterion TODO implement for other codes in a general sense
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', order=order, eig=False, delta0=1e-3)
 
-# TODO: implement better criteria
-# opt._project_forces(atoms.get_forces()) are the forces orthogonal to the constraints
+    if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
+        if task == 'preopt0' or task == 'preopt':
+            fmax = 0.05
+        else:
+            fmax = 0.005
+    else:
+        fmax = 0. # use Gaussian criterion TODO implement for other codes in a general sense
 
-for converged in dyn.irun(fmax=fmax, steps=3000):
-    # x = mol.get_positions()
-    # f = mol.get_forces()
+    for converged in dyn.irun(fmax=fmax, steps=3000):
+        if reader_{qc}.read_convergence(outfile) == 1:
+            success = 1
+            break
 
-    # the Hessian matrix
-    # H = dyn.mm.H
-
-    # its eigenvalues excluding translation/rotation
-    # lams = dyn.mm.lams
-
-    # the corresponding eigenvectors
-    # vecs = dyn.mm.vecs
-
-    print(dyn._project_forces(mol.get_forces()))
-    if reader_{qc}.read_convergence(outfile) == 1:
+    if converged:
         success = 1
-        break
-
-if converged:
-    success = 1
 

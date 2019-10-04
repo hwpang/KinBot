@@ -94,15 +94,15 @@ class ReactionGenerator:
                     if obj.scan == 0: #don't do a scan of a bond
                         if self.species.reac_step[index] == obj.max_step + 1:  # reached last step, no freq yet though
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
-                            if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
+                            if status == 0 and self.species.reac_ts_freq_done[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
                                 opt_geom = self.qc.get_qc_geom(instance_name, self.species.natom, wait=1, allow_error=0)[1]
                                 self.qc.qc_freq(self.species, instance_name, opt_geom, 1)
-                                self.species_ts_freq[index] = 1
-                            elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
+                                self.species.reac_ts_freq_done[index] = 1
+                            elif status == 0 and self.species.reac_ts_freq_done[index] == 1:  # meaning success and freq is running
                                 status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
                                 if status == 0:
-                                    self.species.reac_ts_freq[index] = 2  # won't return here any more
+                                    self.species.reac_ts_freq_done[index] = 2  # won't return here any more
                                     if freq[0] < 0. and freq[1] > 0.:
                                         self.species.reac_ts_done[index] = 1
                                     else:
@@ -120,15 +120,15 @@ class ReactionGenerator:
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
                             status = self.qc.get_qc_energy(instance_name, self.species.natom)[0]
-                            if status == 0 and self.species.reac_ts_freq[index] == 0:  # meaning success and freq was not started
+                            if status == 0 and self.species.reac_ts_freq_done[index] == 0:  # meaning success and freq was not started
                                 # start freq calculation
                                 opt_geom = self.qc.get_qc_geom(instance_name, self.species.natom, wait=1, allow_error=0)[1]
                                 self.qc.qc_freq(self.species, instance_name, opt_geom, 1)
-                                self.species_ts_freq[index] = 1
-                            elif status == 0 and self.species.reac_ts_freq[index] == 1:  # meaning success and freq is running
+                                self.species.reac_ts_freq_done[index] = 1
+                            elif status == 0 and self.species.reac_ts_freq_done[index] == 1:  # meaning success and freq is running
                                 status, freq = self.qc.get_qc_freq(instance_name, self.species.natom)
                                 if status == 0:
-                                    self.species.reac_ts_freq[index] = 2  # won't return here any more
+                                    self.species.reac_ts_freq_done[index] = 2  # won't return here any more
                                     if freq[0] < 0. and freq[1] > 0.:
                                         self.species.reac_ts_done[index] = 1
                                     else:
