@@ -263,7 +263,7 @@ class ReactionGenerator:
                     ts.find_conf_dihedral()
                     obj.ts = ts
                     #do the ts optimization
-                    obj.ts_opt = Optimize(obj.ts,self.par,self.qc)
+                    obj.ts_opt = Optimize(obj.ts, self.par, self.qc)
                     obj.ts_opt.do_optimization()
                     #do the products optimizations
                     for st_pt in obj.products:

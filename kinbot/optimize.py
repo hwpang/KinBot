@@ -30,6 +30,7 @@ from kinbot import symmetry
 from kinbot.conformers import Conformers
 from kinbot.hindered_rotors import HIR
 from kinbot.molpro import Molpro
+from kinbot import reader_gauss
 
 
 class Optimize:
@@ -49,7 +50,7 @@ class Optimize:
         self.par = par
         self.qc = qc
 
-        # wait for all calcualtions to finish before returning
+        # wait for all calculations to finish before returning
         self.wait = wait
 
         # high level job name
@@ -269,7 +270,8 @@ class Optimize:
                     fr_file += '_well'
                 if self.par.par['high_level']:
                         fr_file += '_high'
-                hess = self.qc.read_qc_hess(fr_file, self.species.natom)
+                if self.qc.qc == 'gauss':
+                    hess = reader_gauss.read_hess(fr_file, self.species.natom, self.qc, self.par)
                 self.species.kinbot_freqs, self.species.reduced_freqs = frequencies.get_frequencies(self.species, hess, self.species.geom)
 
                 # write the molpro input and read the molpro energy, if available

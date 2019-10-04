@@ -23,7 +23,6 @@ import logging
 import numpy as np
 import re
 import time
-import time
 import copy
 import pkg_resources
 
@@ -40,7 +39,7 @@ class QuantumChemistry:
     A lot of the functionalities are delegated to the templates.
     """
     
-    def __init__(self,par):
+    def __init__(self, par):
         self.par = par
         self.qc = par.par['qc']
         self.method = par.par['method']
@@ -481,47 +480,6 @@ class QuantumChemistry:
                 zpe = row.data.get('zpe')
         
         return 0, zpe
-
-    def read_qc_hess(self, job, natom):
-        """
-        Read the hessian of a gaussian chk file
-        """
-        
-        check = self.check_qc(job)
-        if check != 'normal': 
-            return []
-        
-        #initialize hessian matrix
-        hess = np.zeros((3*natom,3*natom))
-        
-        if self.qc == 'gauss':
-            
-            fchk = str(job) + '.fchk'
-            chk = str(job) + '.chk'
-            if os.path.exists(chk):
-            #create the fchk file using formchk
-                os.system('formchk ' + job + '.chk > /dev/null')
-            
-            with open(fchk) as f:
-                lines = f.read().split('\n')
-            
-            nvals = 3 * natom * (3 * natom + 1) / 2
-
-            for index, line in enumerate(reversed(lines)):
-                if re.search('Cartesian Force Constants', line) != None:
-                    hess_flat = []
-                    n = 0
-                    while len(hess_flat) < nvals:
-                        hess_flat.extend([float(val) for val in lines[-index + n].split()])
-                        n += 1
-                    n = 0
-                    for i in range(3*natom):
-                        for j in range(i+1):
-                            hess[i][j] = hess_flat[n]
-                            hess[j][i] = hess_flat[n]
-                            n += 1
-                    break
-        return hess
 
     def is_in_database(self, job):
         """
