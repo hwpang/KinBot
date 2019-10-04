@@ -23,10 +23,8 @@ for f in change:
 
 #!/usr/bin/env python3
 
-if task[:3] == 'irc':
-    from sella import IRC
-else:
-    from sella import Sella
+from sella import IRC
+from sella import Sella
 
 #myatoms.calc = calc
 
@@ -48,15 +46,24 @@ outfile = '{label}.log'
 #        For molecular systems it needs to be smaller. Max is about 100, min is 1e-15
 
 # IRC
+if task[:3] == 'irc':
+
+    job = '{label}'[:-6] 
+    if qc == 'gauss':
+        hess = reader_{qc}.read_hess(job, natom)
+        for i, row in enumerate(hess):
+            for j, _ in enumerate(row):
+                hess[i][j] *= Hartree / Bohr / Bohr
+
 if task[:4] == 'ircf':
-    dyn = IRC(mol, trajectory='{label}.traj', dx=0.1, eta=1e-4, gamma=1e-2)
+    dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
     for converged in dyn.irun(fmax=0.01, steps=1000, direction='forward'):
         if converged:
             success = 1
             break
 
 elif task[:4] == 'ircr':
-    dyn = IRC(mol, trajectory='{label}.traj', dx=0.1, eta=1e-4, gamma=1e-2)
+    dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
     for converged in dyn.irun(fmax=0.01, steps=1000, direction='reverse'):
         if converged:
             success = 1

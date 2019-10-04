@@ -270,8 +270,12 @@ class Optimize:
                     fr_file += '_well'
                 if self.par.par['high_level']:
                         fr_file += '_high'
-                if self.qc.qc == 'gauss':
-                    hess = reader_gauss.read_hess(fr_file, self.species.natom, self.qc, self.par)
+
+                if self.qc.check_qc(fr_file) != 'normal': 
+                    hess = []
+                else:
+                    if self.qc.qc == 'gauss':
+                        hess = reader_gauss.read_hess(fr_file, self.species.natom)
                 self.species.kinbot_freqs, self.species.reduced_freqs = frequencies.get_frequencies(self.species, hess, self.species.geom)
 
                 # write the molpro input and read the molpro energy, if available

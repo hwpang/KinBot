@@ -8,11 +8,13 @@ from ase import Atoms
 from ase.db import connect
 from ase.io import read
 from ase.optimize.pcobfgs import PCOBFGS
+from ase.units import Hartree, Bohr
 from kinbot import reader_{qc}
 from kinbot import qc
 
 label = '{label}'
 atom = {atom}
+natom = len(atom)
 geom = {geom}
 
 mol = Atoms(symbols = atom, positions = geom)

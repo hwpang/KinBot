@@ -143,45 +143,39 @@ def constraint(mol, fix, change):
     return bonds, angles, dihedrals
 
 
-def read_hess(job, natom, qc, par):
+def read_hess(job, natom):
     """
     Read the hessian of a gaussian chk file
     """
 
-    check = qc.check_qc(job)
-    if check != 'normal': 
-        return []
-    
     # initialize Hessian
     hess = np.zeros((3*natom, 3*natom))
     
-    if qc.qc == 'gauss':
-        
-        fchk = str(job) + '.fchk'
-        chk = str(job) + '.chk'
-        if os.path.exists(chk):
-        #create the fchk file using formchk
-            os.system('formchk ' + job + '.chk > /dev/null')
-        
-        with open(fchk) as f:
-            lines = f.read().split('\n')
-        
-        nvals = 3 * natom * (3 * natom + 1) / 2
+    fchk = str(job) + '.fchk'
+    chk = str(job) + '.chk'
+    if os.path.exists(chk):
+    #create the fchk file using formchk
+        os.system('formchk ' + job + '.chk > /dev/null')
+    
+    with open(fchk) as f:
+        lines = f.read().split('\n')
+    
+    nvals = 3 * natom * (3 * natom + 1) / 2
 
-        for index, line in enumerate(reversed(lines)):
-            if re.search('Cartesian Force Constants', line) != None:
-                hess_flat = []
-                n = 0
-                while len(hess_flat) < nvals:
-                    hess_flat.extend([float(val) for val in lines[-index + n].split()])
+    for index, line in enumerate(reversed(lines)):
+        if re.search('Cartesian Force Constants', line) != None:
+            hess_flat = []
+            n = 0
+            while len(hess_flat) < nvals:
+                hess_flat.extend([float(val) for val in lines[-index + n].split()])
+                n += 1
+            n = 0
+            for i in range(3*natom):
+                for j in range(i+1):
+                    hess[i][j] = hess_flat[n]
+                    hess[j][i] = hess_flat[n]
                     n += 1
-                n = 0
-                for i in range(3*natom):
-                    for j in range(i+1):
-                        hess[i][j] = hess_flat[n]
-                        hess[j][i] = hess_flat[n]
-                        n += 1
-                break
+            break
     return hess
 
 
