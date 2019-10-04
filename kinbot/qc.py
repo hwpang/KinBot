@@ -580,6 +580,8 @@ class QuantumChemistry:
         atom = copy.deepcopy(species.atom)
         if not sella:
             atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
+        else:
+            dummy = []
 
         # frequency calculations are not done by sella
         nosella = [ 'freq', 'freqmp2', 'freqhigh']
