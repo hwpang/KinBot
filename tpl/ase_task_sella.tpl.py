@@ -76,9 +76,9 @@ else:
        hess = None 
 
     if order: # saddle point
-        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=True, gamma=1e-2)
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=True, gamma=1e-2, append_trajectory={app_traj})
     else:
-        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=False, delta0=1e-3)
+        dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, order=order, eig=False, delta0=1e-3, append_trajectory={app_traj})
 
     if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
         if task == 'preopt0' or task == 'preopt':

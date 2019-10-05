@@ -572,7 +572,7 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[]):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], app_traj=None):
         """
         Assemble the template for an ASE.
         """
@@ -878,7 +878,8 @@ class QuantumChemistry:
                                        guessmix=self.guessmix,
                                        calcall_ts=self.calcall_ts,
                                        mem=mem,
-                                       memu=memu)
+                                       memu=memu,
+                                       app_traj=app_traj)
 
 
         f_out = open('{}.py'.format(job),'w')
