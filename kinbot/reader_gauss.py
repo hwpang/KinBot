@@ -101,6 +101,8 @@ def read_convergence(outfile):
                     if 'YES' in lines[n+3]:
                         if 'YES' in lines[n+4]:
                             return 1
+                    else:
+                        return 2
 
     return 0  # will look through the whole file
 

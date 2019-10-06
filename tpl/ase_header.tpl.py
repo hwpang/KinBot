@@ -44,6 +44,7 @@ guessmix = {guessmix}
 calcall_ts = {calcall_ts}
 mem = str(int(float({mem}) * 0.95)) 
 memu = '{memu}'
+tight = {tight}
 
 success = 0
 
