@@ -49,6 +49,7 @@ class Optimize:
         self.species = species
         self.par = par
         self.qc = qc
+        print('lala', self.species.name)
 
         # wait for all calculations to finish before returning
         self.wait = wait

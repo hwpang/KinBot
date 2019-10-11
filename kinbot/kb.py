@@ -170,6 +170,7 @@ def main():
     # read the energy and the zpe corrected energy
     err, well0.energy = qc.get_qc_energy(str(well0.chemid) + '_well', 1)
     err, well0.zpe = qc.get_qc_zpe(str(well0.chemid) + '_well', 1)
+    print(well0.energy, well0.zpe)
 
     # do conformer search, high level opt, hir, etc., as requested
     well_opt = Optimize(well0, par, qc, wait=1)

@@ -76,22 +76,19 @@ else:
             hess = None
     except:
        hess = None 
-
+    
     if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
-#        if task == 'preopt0' or task == 'preopt':
-#            fmax = 0.5
-#            constraints_tol = 1e-2
-#        else:
-#            fmax = 0.005
-#            constraints_tol = 1e-5
+        constrained = True
+    else:
+        constrained = False
+
+    if constrained:
         if tight:
             fmax = 0.005
             constraints_tol = 1e-5
         else:
-            fmax = 0.5
-            constraints_tol = 1e-2
-    #    fmax = 0.005
-    #    constraints_tol = 1e-5
+            fmax = 0.05
+            constraints_tol = 1e-3
     else:
         fmax = 0. # use Gaussian criterion TODO implement for other codes in a general sense
         constraints_tol = 1e-5
@@ -103,12 +100,16 @@ else:
         dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, 
                 order=order, eig=False, delta0=1e-3, append_trajectory={app_traj}, constraints_tol=constraints_tol)
 
-    for converged in dyn.irun(fmax=fmax, steps=3000):
-        if reader_{qc}.read_convergence(outfile) > 0:
-            success = 1
-            break
-
-    if converged:
+    for converged in dyn.irun(fmax=fmax, steps=100):
+        if constrained:
+            if converged:
+                success = 1
+                break
+        else:
+            if reader_{qc}.read_convergence(outfile) > 0:
+                success = 1
+                break
+    if task == 'preopt' or task == 'preopt0':
         success = 1
 
     np.save('{label}', dyn.pes.H)

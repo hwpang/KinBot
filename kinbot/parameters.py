@@ -180,7 +180,7 @@ class Parameters:
             'ppn': 1,
             # All memory parameters include the units as well, they are a string
             # Memory for AM1
-            'mem0': '1000i MW',
+            'mem0': '1000 MW',
             # Memory for search
             'mem': '1000 MW',
             # Memory for MP2 for MP2
