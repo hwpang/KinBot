@@ -135,12 +135,12 @@ def main():
     if err < 0:
         logging.error('Error with initial structure optimization.')
         return
-    logging.info('Starting frequency calculation of intial well')
+    logging.info('Starting frequency calculation of initial well')
     qc.qc_freq(well0, str(well0.chemid), well0.geom, 0)
     err, well0.freq = qc.get_qc_freq(str(well0.chemid) + '_well',
                                      well0.natom, wait=1)
     if err < 0:
-        logging.error('Error with initial structure optimization.')
+        logging.error('Error with initial structure frequency.')
         return
 
     if any(well0.freq[i] <= 0 for i in range(len(well0.freq))):
@@ -159,7 +159,7 @@ def main():
     logging.info('Starting MP2 optimization of intial well')
     qc.qc_opt(well0, well0.geom, mp2=1)
     err, geom = qc.get_qc_geom(str(well0.chemid) + '_well_mp2', well0.natom, 1)
-    logging.info('Starting MP2 frequency calculation of intial well')
+    logging.info('Starting MP2 frequency calculation of initial well')
     qc.qc_freq(well0, str(well0.chemid), geom, 0, mp2=1)
     err, freq = qc.get_qc_freq(str(well0.chemid) + '_well_mp2', well0.natom, 1)
 
@@ -170,7 +170,6 @@ def main():
     # read the energy and the zpe corrected energy
     err, well0.energy = qc.get_qc_energy(str(well0.chemid) + '_well', 1)
     err, well0.zpe = qc.get_qc_zpe(str(well0.chemid) + '_well', 1)
-    print(well0.energy, well0.zpe)
 
     # do conformer search, high level opt, hir, etc., as requested
     well_opt = Optimize(well0, par, qc, wait=1)

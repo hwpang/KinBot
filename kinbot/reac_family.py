@@ -39,12 +39,12 @@ def carry_out_reaction(rxn, step, command, sella):
     """
     if step > 0:
         status = rxn.qc.check_qc(rxn.instance_name)
-        if status != 'normal' and status != 'error': return step
+        if status != 'normal' and status != 'normal freq' and status != 'error': return step
 
     skipped = 0
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
-            if rxn.qc.check_qc(rxn.instance_name) == 'normal': 
+            if rxn.qc.check_qc(rxn.instance_name) == 'normal' or rxn.qc.check_qc(rxn.instance_name) == 'normal freq': 
                 err, freq = rxn.qc.get_qc_freq(rxn.instance_name, rxn.species.natom)
                 if err == 0 and len(freq) > 0.:
                     err, geom = rxn.qc.get_qc_geom(rxn.instance_name, rxn.species.natom)

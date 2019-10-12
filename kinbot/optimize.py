@@ -49,7 +49,6 @@ class Optimize:
         self.species = species
         self.par = par
         self.qc = qc
-        print('lala', self.species.name)
 
         # wait for all calculations to finish before returning
         self.wait = wait
@@ -154,7 +153,7 @@ class Optimize:
                                 logging.info('\tHigh level optimization failed for {}'.format(self.species.name))
                                 self.shigh = -999
                                 self.sfreqhigh = -999
-                            if status == 'normal':
+                            if status == 'normal' or status == 'normal freq':
                                 # finished successfully
                                 err, new_geom = self.qc.get_qc_geom(self.job_high, self.species.natom, wait=self.wait)
                                 if geometry.equal_geom(self.species.bond, self.species.geom, new_geom, 0.1):
@@ -175,7 +174,7 @@ class Optimize:
                                             # found an error
                                             logging.info('\tHigh level frequency calculation failed for {}'.format(self.species.name))
                                             self.sfreqhigh = -999  # note that shigh can still be successful
-                                        if status == 'normal':
+                                        if status == 'normal' or status == 'normal freq':
                                             # finished successfully
                                             err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
                                             err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
@@ -272,7 +271,7 @@ class Optimize:
                 if self.par.par['high_level']:
                         fr_file += '_high'
 
-                if self.qc.check_qc(fr_file) != 'normal': 
+                if self.qc.check_qc(fr_file) != 'normal freq': 
                     hess = []
                 else:
                     if self.qc.qc == 'gauss':

@@ -123,7 +123,7 @@ class QuantumChemistry:
             job += '_mp2'
             self.assemble_ase_template(job, 'freqmp2', species, geom, wellorts, 0, fix=[], change=[])
         elif high_level:
-            job = '_high'
+            job += '_high'
             self.assemble_ase_template(job, 'freqhl', species, geom, wellorts, 0, fix=[], change=[])
         else:
             self.assemble_ase_template(job, 'freq', species, geom, wellorts, 0, fix=[], change=[])
@@ -202,24 +202,34 @@ class QuantumChemistry:
         return 0
 
 
-    def submit_qc(self, job, mem, memu, singlejob=1):
+    def submit_qc(self, job, mem, memu, freq, singlejob):
         """
         Submit a job to the queue, unless the job:
             * has finished with Normal termination
             * has finished with Error termination
             * is currently running
-        However, if the optional parameter singlejob is set to zero, then 
-        the job is run only if it has finished. It might have been successful or not. (??)
+        It means that the job is only submitted if it's
+            * not running
+            * never started
+            * was killed half way
+
+        However, if the optional parameter singlejob is set to False, then 
+        the job is run only if it has finished, which means that Normal or Error 
+        termination are both acceptable finish states in this case.
         This is for continuations, when the continuing jobs overwrite each other.
         """
 
-        check = self.check_qc(job)
-        if singlejob == 1:
-            if check != 0: 
-                return 0  # either normal or error termination, but is in database and done
+        check = self.check_qc(job) # returns 0, 'running', 'normal', 'normal freq', or 'error'
+        if freq:
+            if check == 'running' or check == 'normal freq' or check == 'error':
+                return 0
         else:
-            if check == 'running': 
-                return 0  # still running
+            if singlejob == True:
+                if check != 0: # running or finished, so no need to submit again 
+                    return 0 
+            else:
+                if check == 'running': 
+                    return 0  # running
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -305,7 +315,7 @@ class QuantumChemistry:
                     return 1, geom 
             else:
                 break
-        if check != 'normal':
+        if check != 'normal' and check != 'normal freq':
             if not allow_error:
                 if wait != 2: return -1, geom
 
@@ -355,7 +365,7 @@ class QuantumChemistry:
                     return 1, geom 
             else:
                 break
-        if check != 'normal':
+        if check != 'normal' and check != 'normal freq':
             if not allow_error:
                 if wait != 2: return -1, geom
 
@@ -393,7 +403,8 @@ class QuantumChemistry:
             else:
                 break
         
-        if check != 'normal': return -1, [0]
+        if check != 'normal' and check != 'normal freq':
+            return -1, [0]
 
         freq = []
         
@@ -504,7 +515,7 @@ class QuantumChemistry:
         Checks the status of the qc job.
         0: not in database (yet)
         'running'
-        data['status'] can be 'normal' or 'error'
+        data['status'] can be 'normal', 'normal freq', or 'error'
         """
         if self.qc == 'gauss':
             log_file = job + '.log'
@@ -538,8 +549,7 @@ class QuantumChemistry:
             logging.error('KinBot does not recognize queuing system {}.'.format(self.queuing))
             logging.error('Exiting')
             sys.exit()
-        #if int(subprocess.call(command, shell = True, stdout=devnull, stderr=devnull)) == 0: 
-        #    return 'running' 
+
         if self.is_in_database(job) and log_file_exists: #by deleting a log file, you allow restarting a job
             #open the database
             rows = self.db.select(name = job)
@@ -599,10 +609,7 @@ class QuantumChemistry:
             guess = False
             chk = True
             maxattempt = 2
-            if wellorts:
-                singlejob = False
-            else:
-                singlejob = True
+            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -641,7 +648,7 @@ class QuantumChemistry:
             guess = False
             chk = True
             maxattempt = 2
-            singlejob = False
+            singlejob = True
             mem = self.mem0
             memu = self.mem0u
 
@@ -669,7 +676,7 @@ class QuantumChemistry:
             guess = True
             chk = True
             maxattempt = 1
-            singlejob = False
+            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -682,7 +689,7 @@ class QuantumChemistry:
             guess =  True
             chk = True
             maxattempt = 1
-            singlejob = False
+            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -695,7 +702,7 @@ class QuantumChemistry:
             guess = True
             chk = True
             maxattempt = 1
-            singlejob = False
+            singlejob = True
             mem = self.memhl
             memu = self.memhlu
 
@@ -888,7 +895,7 @@ class QuantumChemistry:
         f_out.close()
 
         # this will return the same number as submit_qc
-        return self.submit_qc(job, mem, memu, singlejob)
+        return self.submit_qc(job, mem, memu, freq, singlejob)
 
 
 
