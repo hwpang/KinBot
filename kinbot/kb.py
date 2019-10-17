@@ -125,7 +125,7 @@ def main():
     start_name = well0.name
 
     # initialize the qc instance
-    qc = QuantumChemistry(par)
+    qc = QuantumChemistry(par, par.par['mult'], par.par['charge'])
 
     # start the initial optimization of the reactant
     logging.info('Starting optimization of intial well')

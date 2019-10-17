@@ -39,7 +39,7 @@ class QuantumChemistry:
     A lot of the functionalities are delegated to the templates.
     """
     
-    def __init__(self, par):
+    def __init__(self, par, mult, charge):
         self.par = par
         self.qc = par.par['qc']
         self.method = par.par['method']
@@ -59,8 +59,8 @@ class QuantumChemistry:
         self.irc_stepsize = par.par['irc_stepsize']
         self.qc_command = par.par['qc_command']
         self.sella = par.par['sella']
-        self.mult = par.par['mult']
-        self.charge = par.par['charge']
+        self.mult = mult
+        self.charge = charge
         self.calcall_ts = par.par['calcall_ts']
         self.guessmix = par.par['guessmix']
 
@@ -582,7 +582,8 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], app_traj=None, tight=True, singlejob=True):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], 
+            app_traj=None, tight=True, singlejob=True):
         """
         Assemble the template for an ASE.
         """
@@ -827,37 +828,36 @@ class QuantumChemistry:
 
         #SUBSTITUTE TEMPLATES 
         
-        if 1:  # THIS IS JUST HERE WHILE TESTING, WILL NEED TO DELETE AND UNINDENT
-            template = template.format(label=job, 
-                                       atom=list(atom), 
-                                       geom=[list(gi) for gi in geom], 
-                                       ppn=self.ppn,
-                                       method=method,
-                                       basis=basis,
-                                       mult=self.mult,
-                                       charge=self.charge,
-                                       chk=chk,
-                                       guess=guess,
-                                       integral=integral,
-                                       dummy=dummy,
-                                       sella=sella,
-                                       order=order,
-                                       freq=freq,
-                                       task=task,
-                                       irc_maxpoints=self.irc_maxpoints,
-                                       irc_stepsize=self.irc_stepsize,
-                                       qc=self.qc,
-                                       fix=fix,
-                                       change=change,
-                                       release=release,
-                                       maxattempt=maxattempt,
-                                       qc_command=self.qc_command,
-                                       guessmix=self.guessmix,
-                                       calcall_ts=self.calcall_ts,
-                                       mem=mem,
-                                       memu=memu,
-                                       app_traj=app_traj,
-                                       tight=tight)
+        template = template.format(label=job, 
+                                   atom=list(atom), 
+                                   geom=[list(gi) for gi in geom], 
+                                   ppn=self.ppn,
+                                   method=method,
+                                   basis=basis,
+                                   mult=self.mult,
+                                   charge=self.charge,
+                                   chk=chk,
+                                   guess=guess,
+                                   integral=integral,
+                                   dummy=dummy,
+                                   sella=sella,
+                                   order=order,
+                                   freq=freq,
+                                   task=task,
+                                   irc_maxpoints=self.irc_maxpoints,
+                                   irc_stepsize=self.irc_stepsize,
+                                   qc=self.qc,
+                                   fix=fix,
+                                   change=change,
+                                   release=release,
+                                   maxattempt=maxattempt,
+                                   qc_command=self.qc_command,
+                                   guessmix=self.guessmix,
+                                   calcall_ts=self.calcall_ts,
+                                   mem=mem,
+                                   memu=memu,
+                                   app_traj=app_traj,
+                                   tight=tight)
 
 
         f_out = open('{}.py'.format(job),'w')

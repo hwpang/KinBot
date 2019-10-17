@@ -33,6 +33,7 @@ from kinbot import reac_family
 from kinbot.irc import IRC
 from kinbot.optimize import Optimize
 from kinbot.stationary_pt import StationaryPoint
+from kinbot.qc import QuantumChemistry
 
 
 class ReactionGenerator:
@@ -199,26 +200,37 @@ class ReactionGenerator:
                                         obj.products = prod
                                         obj.product_bonds = prod.bond
                                         self.species.reac_ts_done[index] = 2
+                                        logging.info('\t\tIRC products are optimized for {}'.format(instance_name))
 
                 elif self.species.reac_ts_done[index] == 2:
                     #identify bimolecular products and wells
                     fragments, maps = obj.products.start_multi_molecular()
+                    
+                    if len(fragments) == 1:
+                        #if unimolecular product, it inherits the multiplicity and charge from input
+                        qc = [QuantumChemistry(self.par, self.species.mult, self.species.charge)]
+                    else:
+                        qc = [QuantumChemistry(self.par, frag.mult, frag.charge) for frag in fragments]
                     obj.products = []
-                    for frag in fragments:
+                    for i, frag in enumerate(fragments):
                         logging.info('\t\tFor reaction {} product {} is identified, now running optimization.'.format(instance_name, frag.chemid))
                         obj.products.append(frag)
-                        self.qc.qc_opt(frag, frag.geom)
+                        qc[i].qc_opt(frag, frag.geom)
                     self.species.reac_ts_done[index] = 3
 
                 elif self.species.reac_ts_done[index] == 3:
                     #do freq calculation if successful
-                    for frag in obj.products:
+                    if len(obj.products) == 1:
+                        qc = [QuantumChemistry(self.par, self.species.mult, self.species.charge)]
+                    else:
+                        qc = [QuantumChemistry(self.par, frag.mult, frag.charge) for frag in obj.products]
+                    for i, frag in enumerate(obj.products):
                         fragname = str(frag.chemid) + '_well'
                         stat = self.qc.check_qc(fragname)
                         if stat == 'normal' or 'normal freq':
                             #start freq calculation if not done
                             logging.info('\t\tFor reaction {} product {} is identified, now running frequency calculation.'.format(instance_name, fragname))
-                            self.qc.qc_freq(frag, fragname, frag.geom, 0) 
+                            qc[i].qc_freq(frag, fragname, frag.geom, 0)
                         elif stat == 'error':
                             self.species.reac_ts_done[index] = -999
                             logging.info('\tProduct optimization failed for {}, product {}'.format(instance_name, fragname))

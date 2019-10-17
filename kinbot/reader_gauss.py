@@ -89,6 +89,9 @@ def read_freq(outfile, atom):
 def read_convergence(outfile):
     """
     Check for the four YES.
+    0: did not converge
+    1: forces and displacements converged
+    2: forces converged
     """
 
     with open(outfile) as f:

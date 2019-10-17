@@ -75,7 +75,7 @@ else:
         if hess == None:
             hess = None
     except:
-       hess = None 
+        hess = None 
     
     if len(constraints['fix']) + len(constraints['bonds']) + len(constraints['angles']) + len(constraints['dihedrals']):
         constrained = True
