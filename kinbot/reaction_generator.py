@@ -58,13 +58,7 @@ class ReactionGenerator:
         all cores are occupied efficiently.
 
         The switching between the various stages are done via the reac_ts_done variable.
-        0: initiate the TS search
-        1: check barrier height and errors in TS, and initiates normal mode displacement test, start the irc calculations 
-        2: submit product optimization
-        3: submit the frequency calculation 
-        4: do the optimization of the ts and the products
-        5: follow up on the optimizations
-        6: finalize calculations, check for wrong number of negative frequencies
+        TODO: write the list, the old one was very outdated
         
         If at any times the calculation fails, reac_ts_done is set to -999.
         If all steps are successful, reac_ts_done is set to -1.
@@ -210,23 +204,43 @@ class ReactionGenerator:
                     #identify bimolecular products and wells
                     fragments, maps = obj.products.start_multi_molecular()
                     obj.products = []
-                    for i, frag in enumerate(fragments):
+                    for frag in fragments:
+                        logging.info('\t\tFor reaction {} product {} is identified, now running optimization.'.format(instance_name, frag.chemid))
                         obj.products.append(frag)
                         self.qc.qc_opt(frag, frag.geom)
-                        # TODO add qc_freq in the cycle, but maybe not needed, this is just a joint optimization, 
-                        # the separation and characterization is done below, where freq is included in the 
-                        # Optimize object already
                     self.species.reac_ts_done[index] = 3
 
                 elif self.species.reac_ts_done[index] == 3:
-                    #wait for the optimization to finish 
+                    #do freq calculation if successful
+                    for frag in obj.products:
+                        fragname = str(frag.chemid) + '_well'
+                        stat = self.qc.check_qc(fragname)
+                        if stat == 'normal' or 'normal freq':
+                            #start freq calculation if not done
+                            logging.info('\t\tFor reaction {} product {} is identified, now running frequency calculation.'.format(instance_name, fragname))
+                            self.qc.qc_freq(frag, fragname, frag.geom, 0) 
+                        elif stat == 'error':
+                            self.species.reac_ts_done[index] = -999
+                            logging.info('\tProduct optimization failed for {}, product {}'.format(instance_name, fragname))
+
+                    prodstat = 0 # status of all product optimization + freq calculation in this channel
+                    for frag in obj.products:
+                        fragname = str(frag.chemid) + '_well'
+                        if self.qc.check_qc(fragname) != 'normal freq':
+                            prodstat = 1
+                    if prodstat == 0:
+                        # now we can move on to the next step
+                        self.species.reac_ts_done[index] = 4
+
+                elif self.species.reac_ts_done[index] == 4:
+                    #wait for the freq calculation to finish 
                     err = 0
                     for st_pt in obj.products:
                         chemid = st_pt.chemid
                         orig_geom = copy.deepcopy(st_pt.geom)
                         e, st_pt.geom = self.qc.get_qc_geom(str(st_pt.chemid) + '_well', st_pt.natom)
                         if e < 0:
-                            logging.info('\tProduct optimization failed for {}, product {}'.format(instance_name,st_pt.chemid))
+                            logging.info('\tProduct optimization failed for {}, product {}'.format(instance_name, st_pt.chemid))
                             self.species.reac_ts_done[index] = -999
                             err = -1
                         elif e != 0:
@@ -243,9 +257,9 @@ class ReactionGenerator:
                                 self.species.reac_ts_done[index] = -999
                                 err = -1
                     if err == 0:
-                        self.species.reac_ts_done[index] = 4
+                        self.species.reac_ts_done[index] = 5
 
-                elif self.species.reac_ts_done[index] == 4:
+                elif self.species.reac_ts_done[index] == 5:
                     # Do the TS and product optimization
                     
                     #make a stationary point object of the ts
@@ -273,7 +287,7 @@ class ReactionGenerator:
                         for i, inst_i in enumerate(self.species.reac_inst):
                             if not i == index:
                                 obj_i = self.species.reac_obj[i]
-                                if self.species.reac_ts_done[i] > 3:
+                                if self.species.reac_ts_done[i] > 4:
                                     for j,st_pt_i in enumerate(obj_i.products):
                                         if st_pt_i.chemid == st_pt.chemid:
                                             if len(obj_i.prod_opt) > j:
@@ -284,9 +298,9 @@ class ReactionGenerator:
                             prod_opt = Optimize(st_pt,self.par,self.qc)
                             prod_opt.do_optimization()
                         obj.prod_opt.append(prod_opt)
-                    self.species.reac_ts_done[index] = 5
+                    self.species.reac_ts_done[index] = 6
 
-                elif self.species.reac_ts_done[index] == 5:
+                elif self.species.reac_ts_done[index] == 6:
                     #check up on the TS and product optimizations 
                     opts_done = 1
                     fails = 0
@@ -305,9 +319,9 @@ class ReactionGenerator:
                     if fails:
                         self.species.reac_ts_done[index] = -999
                     elif opts_done:
-                        self.species.reac_ts_done[index] = 6
+                        self.species.reac_ts_done[index] = 7
 
-                elif self.species.reac_ts_done[index] == 6:
+                elif self.species.reac_ts_done[index] == 7:
                     #Finilize the calculations
                     
                     #continue to PES search in case a new well was found
@@ -438,7 +452,6 @@ class ReactionGenerator:
             for ext in extensions:
                 # delete file
                 file = '.'.join([name, ext])
-                # print(file)
                 try:
                     os.remove(file)
                 except FileNotFoundError:

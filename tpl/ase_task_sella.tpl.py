@@ -56,14 +56,14 @@ if task[:3] == 'irc':
 
 if task[:4] == 'ircf':
     dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
-    for converged in dyn.irun(fmax=0.01, steps=1000, direction='forward'):
+    for converged in dyn.irun(fmax=0.01, steps=100, direction='forward'):
         if converged:
             success = 1
             break
 
 elif task[:4] == 'ircr':
     dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
-    for converged in dyn.irun(fmax=0.01, steps=1000, direction='reverse'):
+    for converged in dyn.irun(fmax=0.01, steps=100, direction='reverse'):
         if converged:
             success = 1
             break

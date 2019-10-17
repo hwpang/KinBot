@@ -89,16 +89,16 @@ def carry_out_reaction(rxn, step, command, sella):
             tight = False
         if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, 
-                    fix=fix, change=change, release=release, app_traj=app_traj, tight=True)
+                    fix=fix, change=change, release=release, app_traj=app_traj, tight=True, singlejob=False)
         elif step == 0 or skipped:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, 
                     fix=fix, change=change, release=release, app_traj=app_traj, tight=tight)
         elif step < rxn.max_step:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, 
-                    fix=fix, change=change, release=release, app_traj=app_traj, tight=tight)
+                    fix=fix, change=change, release=release, app_traj=app_traj, tight=tight, singlejob=False)
         else:
             step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, 
-                    fix=fix, change=change, release=release, app_traj=app_traj)
+                    fix=fix, change=change, release=release, app_traj=app_traj, singlejob=False)
         
     else:
         # use the pcobfgs algorithm for the geometry update, currently disabled and abandoned

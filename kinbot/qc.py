@@ -286,7 +286,7 @@ class QuantumChemistry:
         return 1  # important to keep it 1, this is the natural counter of jobs submitted
 
 
-    def get_qc_geom(self, job, natom, wait=0, allow_error = 0):
+    def get_qc_geom(self, job, natom, wait=0, allow_error=0):
         """
         Get the geometry from the ase database file.
         Returns it, with the following conditions about the status of the job.
@@ -582,7 +582,7 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], app_traj=None, tight=True):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], app_traj=None, tight=True, singlejob=True):
         """
         Assemble the template for an ASE.
         """
@@ -598,6 +598,8 @@ class QuantumChemistry:
         if task in nosella:
             sella = 0
 
+        chk = True
+
         # TASKS AND OPTIONS
         # OPTIMIZATIONS
         if task == 'opt':
@@ -607,9 +609,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -620,9 +620,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -633,9 +631,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.memhl
             memu = self.memhlu
 
@@ -646,9 +642,7 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.mem0
             memu = self.mem0u
 
@@ -659,9 +653,7 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = True
-            chk = True
             maxattempt = 2
-            singlejob = False
             mem = self.mem0
             memu = self.mem0u
 
@@ -674,9 +666,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -687,9 +677,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess =  True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -700,9 +688,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memhl
             memu = self.memhlu
 
@@ -715,9 +701,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -728,9 +712,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -741,9 +723,7 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = False
-            chk = False
             maxattempt = 1
-            singlejob = True
             mem = self.mem0
             memu = self.mem0u
 
@@ -755,9 +735,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
  
@@ -769,9 +747,7 @@ class QuantumChemistry:
             order = -1  # do not optimize
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -782,9 +758,7 @@ class QuantumChemistry:
             order = -1  # do not optimize
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
  
@@ -796,9 +770,7 @@ class QuantumChemistry:
             order = 0  
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -809,9 +781,7 @@ class QuantumChemistry:
             order = 0  
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 

@@ -160,6 +160,7 @@ class Optimize:
                                     # geometry is as expected, update
                                     err, self.species.geom = self.qc.get_qc_geom(self.job_high, self.species.natom)
                                     err, self.species.energy = self.qc.get_qc_energy(self.job_high)
+                                    self.shigh = 1
                                     if self.sfreqhigh == -1:
                                         # high level frequency did not start yet
                                         logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
@@ -340,7 +341,6 @@ class Optimize:
             for ext in extensions:
                 # delete file
                 file = '.'.join([name, ext])
-                # print(file)
                 try:
                     os.remove(file)
                 except FileNotFoundError:
