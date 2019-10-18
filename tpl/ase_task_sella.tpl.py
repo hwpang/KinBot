@@ -56,14 +56,20 @@ if task[:3] == 'irc':
 
 if task[:4] == 'ircf':
     dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
-    for converged in dyn.irun(fmax=0.01, steps=100, direction='forward'):
+    for i, converged in enumerate(dyn.irun(fmax=0.01, steps=100, direction='forward')):
+        db = connect('ml.db')
+        db.write(mol, name=label + '_' + str(i), data={{'energy': e, 
+                                         'geometry': mol.positions}}) 
         if converged:
             success = 1
             break
 
 elif task[:4] == 'ircr':
     dyn = IRC(mol, trajectory='{label}.traj', H0=hess, dx=0.1, eta=1e-4, gamma=1e-2)
-    for converged in dyn.irun(fmax=0.01, steps=100, direction='reverse'):
+    for i, converged in enumerate(dyn.irun(fmax=0.01, steps=100, direction='reverse')):
+        db = connect('ml.db')
+        db.write(mol, name=label + '_' + str(i), data={{'energy': e, 
+                                         'geometry': mol.positions}})
         if converged:
             success = 1
             break
@@ -100,7 +106,10 @@ else:
         dyn = Sella(mol, constraints=constraints, trajectory='{label}.traj', H0=hess, 
                 order=order, eig=False, delta0=1e-3, append_trajectory={app_traj}, constraints_tol=constraints_tol)
 
-    for converged in dyn.irun(fmax=fmax, steps=100):
+    for i, converged in enumerate(dyn.irun(fmax=fmax, steps=100)):
+        db = connect('ml.db')
+        db.write(mol, name=label + '_' + str(i), data={{'energy': e, 
+                                         'geometry': mol.positions}})
         if constrained:
             if converged:
                 success = 1
@@ -113,3 +122,8 @@ else:
         success = 1
 
     np.save('{label}', dyn.pes.H)
+
+
+
+
+

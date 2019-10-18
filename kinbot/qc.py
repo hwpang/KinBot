@@ -99,10 +99,10 @@ class QuantumChemistry:
             job = str(species.name)
             if mp2:
                 job += '_mp2'
-                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
             elif high_level:
                 job += '_high'
-                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
             else:
                 self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
         

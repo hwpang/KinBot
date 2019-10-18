@@ -131,6 +131,8 @@ class Parameters:
             'break_bonds' : [],
             # form the following bonds
             'form_bonds' : [],
+            # save all intermediate geometries and energies into a database
+            'save_all_points' : 0,
 
             # QUANTUM CHEMISTRY INFO
             # Which quantum chemistry code to use

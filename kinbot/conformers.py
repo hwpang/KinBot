@@ -385,6 +385,7 @@ class Conformers:
                     self.qc.qc_conf(self.species, geom[i], i, freq=1)  # TODO add MP2 flags!!!
                     status[i] = 1  # meaning that frequency calculation has started
             for i, si in enumerate(status):
+                print(self.species.chemid, i)
                 if si == 1:
                     status[i] = self.test_conformer(i, freq=1)[1]
             if all([si >= 10 for si in status]):  # all are done
