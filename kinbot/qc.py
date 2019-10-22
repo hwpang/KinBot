@@ -646,6 +646,7 @@ class QuantumChemistry:
             maxattempt = 2
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         elif task == 'preopt':
             method = 'am1'
@@ -657,6 +658,7 @@ class QuantumChemistry:
             maxattempt = 2
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         # FREQUENCY
 
@@ -727,6 +729,7 @@ class QuantumChemistry:
             maxattempt = 1
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         # HINDERED ROTORS
         elif task == 'hir':

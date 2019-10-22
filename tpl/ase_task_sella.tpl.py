@@ -118,12 +118,10 @@ else:
             if reader_{qc}.read_convergence(outfile) > 0:
                 success = 1
                 break
-    if task == 'preopt' or task == 'preopt0':
+
+    if task == 'preopt' or task == 'preopt0' or task[:3] == 'irc' or task == 'ringconf':
         success = 1
 
     np.save('{label}', dyn.pes.H)
-
-
-
 
 
