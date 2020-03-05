@@ -23,7 +23,6 @@ import logging
 import numpy as np
 import re
 import time
-import time
 import copy
 import pkg_resources
 
@@ -49,6 +48,7 @@ class QuantumChemistry:
         self.high_level_method = par.par['high_level_method']
         self.high_level_basis = par.par['high_level_basis']
         self.integral = par.par['integral']
+        self.opt = par.par['opt']
         self.ppn = par.par['ppn']
         self.queuing = par.par['queuing']
         self.queue_name = par.par['queue_name']
@@ -114,7 +114,6 @@ class QuantumChemistry:
         """ 
         Creates a frequency calculation and runs it. Always done with internal calculation of the qc code.
         """
-
         if species.wellorts == 0:
             job = str(species.chemid) + '_well'
         else:
@@ -212,7 +211,12 @@ class QuantumChemistry:
         However, if the optional parameter singlejob is set to zero, then 
         the job is run only if it has finished. It might have been successful or not. (??)
         This is for continuations, when the continuing jobs overwrite each other.
+        If the number of jobs in the queue is larger than the user-set limit,
+        KinBot will park here until resources are freed up.
         """
+
+        if self.queue_job_limit > 0:
+            self.limit_jobs()
 
         check = self.check_qc(job)
         if singlejob == 1:
@@ -440,7 +444,7 @@ class QuantumChemistry:
 
         #open the database
         rows = self.db.select(name = job)
-        
+        energy=0
         #take the last entry
         for row in rows:
             if hasattr(row, 'data'):
@@ -523,6 +527,7 @@ class QuantumChemistry:
                     break
         return hess
 
+
     def is_in_database(self, job):
         """
         Checks if the current job is in the database:
@@ -548,16 +553,13 @@ class QuantumChemistry:
         'running'
         data['status'] can be 'normal' or 'error'
         """
-        if self.qc == 'gauss':
-            log_file = job + '.log'
-        elif self.qc == 'nwchem':
-            log_file = job + '.out'
-        log_file_exists = os.path.exists(log_file)
+        logging.debug('Checking job {}'.format(job))
         
         devnull = open(os.devnull, 'w')
         if self.queuing == 'pbs':
             command = 'qstat -f | grep ' + '"Job Id: ' + self.job_ids.get(job,'-1') + '"' + ' > /dev/null'
             if int(subprocess.call(command, shell = True, stdout=devnull, stderr=devnull)) == 0: 
+                logging.debug('Job is running')
                 return 'running'
         elif self.queuing == 'slurm':
             #command = 'scontrol show job ' + self.job_ids.get(job,'-1') + ' | grep "JobId=' + self.job_ids.get(job,'-1') + '"' + ' > /dev/null'
@@ -575,6 +577,7 @@ class QuantumChemistry:
                         line = line[1:]
                     pid = line.split()[0]
                     if pid == self.job_ids.get(job,'-1'):
+                        logging.debug('Job is running')
                         return 'running'
         else:
             logging.error('KinBot does not recognize queuing system {}.'.format(self.queuing))
@@ -582,19 +585,40 @@ class QuantumChemistry:
             sys.exit()
         #if int(subprocess.call(command, shell = True, stdout=devnull, stderr=devnull)) == 0: 
         #    return 'running' 
-        if self.is_in_database(job) and log_file_exists: #by deleting a log file, you allow restarting a job
-            #open the database
-            rows = self.db.select(name = job)
-            data = None
-            #take the last entry
-            for row in rows:
-                if hasattr(row,'data'):
-                    data = row.data
-            if data is None:
-                return 0
-            else:
-                return data['status']
-        else: 
+        
+        if self.is_in_database(job):
+            for i in range(10):
+                
+                if self.qc == 'gauss':
+                    log_file = job + '.log'
+                elif self.qc == 'nwchem':
+                    log_file = job + '.out'
+                log_file_exists = os.path.exists(log_file)
+                if log_file_exists:
+                    logging.debug('Log file is present after {} iterations'.format(i))
+                    #by deleting a log file, you allow restarting a job
+                    #open the database
+                    rows = self.db.select(name = job)
+                    data = None
+                    #take the last entry
+                    for row in rows:
+                        if hasattr(row,'data'):
+                            data = row.data
+                    if data is None:
+                        logging.debug('Data is not in database...')
+                        return 0
+                    else:
+                        logging.debug('Returning status {}'.format(data['status']))
+                        return data['status']
+                else:
+                    logging.debug('Checking againg for log file')
+                    log_file_exists = os.path.exists(log_file)
+                    time.sleep(1)
+                
+                    
+            logging.debug('log file {} does not exist'.format(log_file))
+        else:
+            logging.debug('job {} is not in database'.format(job))
             return 0
 
 
@@ -929,4 +953,19 @@ class QuantumChemistry:
         return self.submit_qc(job, mem, memu, singlejob)
 
 
+    def limit_jobs(self):
+        """
+        Check how many jobs are in the queue from the user, and if larger than the limit, 
+        then wait for resources to free up.
+        """
 
+        while 1:
+            if self.queuing == 'slurm':
+                command = ['squeue', '-h', '-u', '{}'.format(self.username)]
+            elif self.queuing == 'pbs':
+                command = ['qselect', '-u', '{}'.format(self.username)]
+            jobs = subprocess.check_output(command)
+
+            if len(jobs.split(b'\n')) < self.queue_job_limit:
+                return 0
+            time.sleep(30)

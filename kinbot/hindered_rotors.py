@@ -127,6 +127,7 @@ class HIR:
                             self.hir_energies[rotor][ai] = energy
                             self.hir_geoms[rotor][ai] = geom
                         else:
+                            logging.warning("GEOMETRY OPTIMIZATION FAILED - STRUCTURES DIFFER FOR  " + job)
                             self.hir_status[rotor][ai] = 1
                             self.hir_energies[rotor][ai] = -1
                             self.hir_geoms[rotor][ai] = geom
@@ -139,19 +140,32 @@ class HIR:
         while 1:
             # check if all the calculations are finished
             self.test_hir()
+            for rotor in range(len(self.species.dihed)):
+                status = self.hir_status[rotor]
+                energies = self.hir_energies[rotor]
+                #energies taken if status = 0, successful geom check or normal gauss termination
+                ens = [(energies[i] - energies[0])*constants.AUtoKCAL for i in range(len(status)) if status[i] == 0]
+
+            # if job finishes status set to 0 or 1, if all done then do the following calculation
             if all([all([test >= 0 for test in status]) for status in self.hir_status]):
                 for rotor in range(len(self.species.dihed)):
                     if self.species.wellorts:
                         job = self.species.name + '_hir_' + str(rotor)
                     else:
                         job = str(self.species.chemid) + '_hir_' + str(rotor)
+                    if len(ens) < self.nrotation - 2:
+                        logging.warning("More than 2 HIR calculations failed for " + job)
 
                     angles = [i * 2 * np.pi / float(self.nrotation) for i in range(self.nrotation)]
                     # write profile to file
                     self.write_profile(rotor, job)
-                    self.hir_fourier.append(self.fourier_fit(job,
-                                                             angles,
-                                                             rotor))
+                    #Check to see if HIR failed, job will continue if failed, but warning will be generated
+                    A,a=self.fourier_fit(job,angles,rotor)
+                    if(a==0):
+                        logging.warning("FAILED HIR - empty energy array sent to fourier_fit for " + job)
+                    else:
+                        self.hir_fourier.append(self.fourier_fit(job,angles,rotor))
+
                 return 1
             else:
                 if wait:
@@ -198,26 +212,30 @@ class HIR:
                 X[i][j] = (1 - np.cos((j+1) * ai))
                 X[i][j+n_terms] = np.sin((j+1) * ai)
 
-        # FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
-        # To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
-        #
-        A = np.linalg.lstsq(X, np.array(ens), rcond=None)[0]
+        if(len(ens) > 0):
+            a=1
+            A = np.linalg.lstsq(X, np.array(ens), rcond=None)[0]
 
-        for i, si in enumerate(status):
-            if si == 1:
-                energies[i] = energies[0] + self.get_fit_value(A, n_terms, angles[i])/constants.AUtoKCAL
+            for i, si in enumerate(status):
+                if si == 1:
+                    energies[i] = energies[0] + self.get_fit_value(A, n_terms, angles[i])/constants.AUtoKCAL
 
-        if self.plot_hir_profiles:
-            # fit the plot to a png file
-            plt.plot(ang, ens, 'ro')
-            fit_angles = [i * 2. * np.pi / 360 for i in range(360)]
-            fit_energies = [self.get_fit_value(A, n_terms, ai) for ai in fit_angles]
-            plt.plot(fit_angles, fit_energies)
-            plt.xlabel('Dihedral angle [radians]')
-            plt.ylabel('Energy [kcal/mol]')
-            plt.savefig('hir_profiles/{}.png'.format(job))
-            plt.clf()
-        return A
+            if self.plot_hir_profiles:
+                # fit the plot to a png file
+                plt.plot(ang, ens, 'ro')
+                fit_angles = [i * 2. * np.pi / 360 for i in range(360)]
+                fit_energies = [self.get_fit_value(A, n_terms, ai) for ai in fit_angles]
+                plt.plot(fit_angles, fit_energies)
+                plt.xlabel('Dihedral angle [radians]')
+                plt.ylabel('Energy [kcal/mol]')
+                plt.savefig('hir_profiles/{}.png'.format(job))
+                plt.clf()
+        else:
+            A=0
+            a=0
+
+        return A, a
+
 
     def get_fit_value(self, A, n_terms, ai):
         """

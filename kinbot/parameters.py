@@ -28,7 +28,7 @@ from __future__ import with_statement
 import os
 import sys
 import json
-import logging;
+import logging
 
 import numpy as np
 
@@ -55,6 +55,7 @@ class Parameters:
             # delete intermetidate files
             'delete_intermediate_files' : 0,
 
+
             # INPUT SPECIES INFOR
             # SMILES of the species
             'smiles': '',
@@ -72,6 +73,10 @@ class Parameters:
             'reaction_search': 1,
             # Which reaction families to include in the search
             'families': ['all'],
+            # Which reaction families to skip in the search
+            'skip_families' : ['none'],
+            # Which chemids to skip kinbot runs for during PES calculations
+            'skip_chemids': ['none'],
             # break all single bonds to find the barriers
             # of potential homolytic scissions
             'homolytic_scissions': 0,
@@ -127,10 +132,6 @@ class Parameters:
             'one_reaction_comb' : 0,
             # Search for one specific reaction using family approach
             'one_reaction_fam' : 0,
-            # break the following bonds
-            'break_bonds' : [],
-            # form the following bonds
-            'form_bonds' : [],
 
             # QUANTUM CHEMISTRY INFO
             # Which quantum chemistry code to use
@@ -149,6 +150,8 @@ class Parameters:
             'high_level_basis': '6-311++G(d,p)',
             # Integral grid for Gaussian, only for the high-level calculations
             'integral': '',
+            # Optimization threshold
+            'opt': '',
             # for Gaussian irc: IRC(MaxPoints=n)
             'irc_maxpoints': 30,
             # for Gaussian irc, IRC(StepSize=n)
@@ -191,11 +194,14 @@ class Parameters:
             'single_point_ppn': 1,
             # This many spaces can be used for numbering files, e.g., in ga
             'zf': 4,
+            # delete intermetidate files
+            'delete_intermediate_files' : 0,
             # Scratch directory
             'scratch': '/scratch/jzador',
             # User name
             'username': 'jzador',
-
+            # Max. number of job from user in queue, if negative, ignored
+            'queue_job_limit' : -1,
 
             # MASTER EQUATION
             # Which ME code to use:
@@ -217,6 +223,9 @@ class Parameters:
             'Masses': [4.0, 87.0],
             # MESMER specific keywords
             'mesmer_command': 'mesmer',
+
+            # for development
+            'test': 0,
         }
 
         if self.input_file is not None:

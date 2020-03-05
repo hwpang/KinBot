@@ -42,6 +42,7 @@ def carry_out_reaction(rxn, step, command):
         if status != 'normal' and status != 'error': return step
 
     skipped = 0
+
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
             if rxn.qc.check_qc(rxn.instance_name) == 'normal': 
@@ -56,7 +57,7 @@ def carry_out_reaction(rxn, step, command):
         geom = rxn.species.geom
     else:
         err, geom = rxn.qc.get_qc_geom(rxn.instance_name, rxn.species.natom, allow_error = 1)
-    
+
     #the the constraints for this step
     step, fix, change, release = rxn.get_constraints(step, geom)
 

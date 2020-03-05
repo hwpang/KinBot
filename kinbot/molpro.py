@@ -58,17 +58,33 @@ class Molpro:
 
         nelectron -= self.species.charge
 
+        symm = 1
+        #TODO: Code exceptions into their own function/py script that opt can call.
+        #TODO: Fix symmetry numbers for calcs as well if needed
+        #O2
+        if self.species.chemid == "320320000000000000001": 
+            symm = 1
+            spin = 2 
+        #CH2 
+        elif self.species.chemid == "140260020000000000001": 
+            symm = 1
+            spin = 2
+        #others 
+        else: 
+            spin = self.species.mult-1
         with open('molpro/' + fname + '.inp', 'w') as outf:
             outf.write(file.format(name=fname,
                                    natom=self.species.natom,
                                    geom=geom,
                                    nelectron=nelectron,
-                                   spin=self.species.mult - 1,
+                                   symm=symm,
+                                   spin=spin,
                                    charge=self.species.charge
                                    ))
 
 
-    def get_molpro_energy(self, key='MYENERGY'):
+    #def get_molpro_energy(self, key='MYENERGY'):
+    def get_molpro_energy(self, key='MYENA_DZ(1)'):
         """
         Verify if there is a molpro output file and if yes, read the energy
         key is the keyword for the energy we want to read
@@ -87,7 +103,7 @@ class Molpro:
 
             for index, line in enumerate(reversed(lines)):
                 if ('SETTING ' + key) in line:
-                    return 1, float(line.split()[2])
+                    return 1, float(line.split()[3])
         else:
             return 0, -1
 

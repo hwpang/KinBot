@@ -18,6 +18,8 @@
 ##                                               ##
 ###################################################
 
+import os
+import re
 import numpy as np
 
 """
@@ -31,7 +33,7 @@ def read_geom(outfile, mol, dummy):
     with open(outfile) as f:
         lines = f.readlines()
 
-    geom = np.zeros((len(mol),3))
+    geom = np.zeros((len(mol), 3))
     for index, line in enumerate(reversed(lines)):
         if 'Input orientation:' in line:
             for n in range(len(mol)):
@@ -87,6 +89,9 @@ def read_freq(outfile, atom):
 def read_convergence(outfile):
     """
     Check for the four YES.
+    0: did not converge
+    1: forces and displacements converged
+    2: forces converged
     """
 
     with open(outfile) as f:
@@ -99,6 +104,8 @@ def read_convergence(outfile):
                     if 'YES' in lines[n+3]:
                         if 'YES' in lines[n+4]:
                             return 1
+                    else:
+                        return 2
 
     return 0  # will look through the whole file
 
@@ -139,3 +146,63 @@ def constraint(mol, fix, change):
             dihedrals.append([dihed,[ci[0]-1, ci[1]-1, ci[2]-1, ci[3]-1]])
 
     return bonds, angles, dihedrals
+
+
+def read_hess(job, natom):
+    """
+    Read the hessian of a gaussian chk file
+    """
+
+    # initialize Hessian
+    hess = np.zeros((3*natom, 3*natom))
+    
+    fchk = str(job) + '.fchk'
+    chk = str(job) + '.chk'
+    if os.path.exists(chk):
+    #create the fchk file using formchk
+        os.system('formchk ' + job + '.chk > /dev/null')
+    
+    with open(fchk) as f:
+        lines = f.read().split('\n')
+    
+    nvals = 3 * natom * (3 * natom + 1) / 2
+
+    for index, line in enumerate(reversed(lines)):
+        if re.search('Cartesian Force Constants', line) != None:
+            hess_flat = []
+            n = 0
+            while len(hess_flat) < nvals:
+                hess_flat.extend([float(val) for val in lines[-index + n].split()])
+                n += 1
+            n = 0
+            for i in range(3*natom):
+                for j in range(i+1):
+                    hess[i][j] = hess_flat[n]
+                    hess[j][i] = hess_flat[n]
+                    n += 1
+            break
+    return hess
+
+
+def read_imag_mode(job, natom):
+    """
+    Read the imaginary normal mode displacements from a log file.
+    Only for saddle points! It will read the firs normal mode
+    for a well, but that's not very useful.
+    """
+
+    nmode = np.zeros([natom, 3])
+    joblog = '{}.log'.format(job)
+    with open(joblog) as f:
+        lines = f.read().split('\n')
+    
+    for l, line in enumerate(lines):
+        if line[:10] == '  Atom  AN':
+            for n in range(natom):
+                mm = lines[l + n + 1].split() 
+                nmode[n][0]= float(mm[2])
+                nmode[n][1]= float(mm[3])
+                nmode[n][2]= float(mm[4])
+            break
+
+    return(nmode)

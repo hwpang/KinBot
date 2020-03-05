@@ -26,6 +26,7 @@ import time
 import logging
 
 from kinbot import constants
+from kinbot import filecopying
 from kinbot import geometry
 from kinbot import pes
 from kinbot import postprocess
@@ -75,13 +76,21 @@ class ReactionGenerator:
             alldone = 1
         else: 
             alldone = 0
-
+        
+        # status to see of kinbot needs to wait for the product optimizations
+        # from another kinbot run, to avoid duplication of calculations
+        products_waiting_status = [[] for i in self.species.reac_inst]
+        count=0
+        for i in self.species.reac_inst:
+             count=count+1
+        all_unique_prod=[]
+        frag_unique=[]
         while alldone:
             for index, instance in enumerate(self.species.reac_inst):
                 obj = self.species.reac_obj[index]
                 instance_name = obj.instance_name
 
-                # START REATION SEARCH
+                # START REACTION SEARCH
                 if self.species.reac_ts_done[index] == 0 and self.species.reac_step[index] == 0:
                     #verify after restart if search has failed in previous kinbot run
                     status = self.qc.check_qc(instance_name)
@@ -192,34 +201,64 @@ class ReactionGenerator:
                                 elif irc_prod_status[0] == 'running' or irc_status[1] == 'running':
                                     continue
                                 else:
-                                    #read the geometries and try to make products out of them
-                                    #verify which of the ircs leads back to the reactant, if any
-                                    prod = obj.irc.irc2stationary_pt()
-                                    if prod == 0:
-                                        logging.info('\t\tNo product found for {}'.format(instance_name))
-                                        self.species.reac_ts_done[index] = -999
-                                    else:
-                                        #IRC's are done
-                                        obj.products = prod
-                                        obj.product_bonds = prod.bond
-                                        self.species.reac_ts_done[index] = 2
+                                    #IRC's are done
+                                    obj.products = prod
+                                    obj.product_bonds = prod.bond
+                                    self.species.reac_ts_done[index] = 2
 
                 elif self.species.reac_ts_done[index] == 2:
-                    #identify bimolecular products and wells
-                    fragments, maps = obj.products.start_multi_molecular()
-                    obj.products = []
-                    for i, frag in enumerate(fragments):
-                        obj.products.append(frag)
-                        self.qc.qc_opt(frag, frag.geom)
-                        # TODO add qc_freq in the cycle, but maybe not needed, this is just a joint optimization, 
-                        # the separation and characterization is done below, where freq is included in the 
-                        # Optimize object already
-                    self.species.reac_ts_done[index] = 3
+                    if len(products_waiting_status[index]) == 0:
+                        #identify bimolecular products and wells
+                        fragments, maps = obj.products.start_multi_molecular()
+                        obj.products = []
 
-                elif self.species.reac_ts_done[index] == 3:
-                    #wait for the optimization to finish 
-                    err = 0
+                        a=[]
+                        for frag in fragments:
+                            a.append(frag)
+                            if len(frag_unique) == 0:
+                                frag_unique.append(frag)
+                            elif len(frag_unique) > 0:
+                                i=1
+                                for fragb in frag_unique:
+                                    if frag.chemid == fragb.chemid:
+                                        a.pop()
+                                        frag=fragb
+                                        a.append(frag)
+                                        break
+                                    if i == len(frag_unique):
+                                        frag_unique.append(frag)
+                                        break
+                                    i=i+1
+
+                        n=1
+                        for frag in a:
+                            obj.products.append(frag)
+                            self.qc.qc_opt(frag, frag.geom)
+                            n=n+1
+
+                        #check products make sure they are the same
+                        for i, st_pt_i in enumerate(obj.products):
+                            for j, st_pt_j in enumerate(obj.products):
+                                if st_pt_i.chemid == st_pt_j.chemid and i < j:
+                                    obj.products[j] = obj.products[i]
+
+
+
+                    #print products generated by IRC
+                    products=[] 
+                    for st_pt in obj.products: 
+                        products.append(st_pt.chemid) 
+                    products.append(' ') 
+                    products.append(' ') 
+                    products.append(' ') 
+                    barrier = (self.qc.get_qc_energy(instance_name)[1] - sp_energy) * constants.AUtoKCAL
+                    logging.info('\tReaction {} has a barrier of {} and lead to products {} {} {}'.format(instance_name,barrier,products[0],products[1],products[2]))
+
+                    #check geom post optimization
+                    obj.products_final = []
+
                     for st_pt in obj.products:
+                        obj.products_final.append(st_pt)
                         chemid = st_pt.chemid
                         orig_geom = copy.deepcopy(st_pt.geom)
                         e, st_pt.geom = self.qc.get_qc_geom(str(st_pt.chemid) + '_well', st_pt.natom)
@@ -236,18 +275,77 @@ class ReactionGenerator:
                             st_pt.characterize(0)  # not allowed to use the dimer option here
                             st_pt.calc_chemid()
                             if chemid != st_pt.chemid:
-                                # product was optimized to another structure, give warning and remove this reaction
-                                logging.info('\tProduct optimizatied to other structure for {}, product {} to {}'.format(instance_name,chemid,st_pt.chemid))
-                                self.species.reac_ts_done[index] = -999
-                                err = -1
+                                obj.products_final.pop()
+                                newfrags, newmaps = st_pt.start_multi_molecular()
+                                products_waiting_status[index] = [0 for frag in newfrags]
+                                fragChemid=[]
+                                for a in newfrags:
+                                    for prod in frag_unique:
+                                        if a.chemid == prod.chemid:
+                                            newfrags.pop()
+                                            a=prod
+                                            newfrags.append(a)
+                                            break
+                                    obj.products_final.append(a)
+                                    self.qc.qc_opt(a, a.geom)
+                                    fragChemid.append(a.chemid)
+                                if len(fragChemid) == 1:
+                                    fragChemid.append(" ")
+                                for i, frag in enumerate(newfrags):
+                                    products_waiting_status[index][i] = 1
+                                
+                                logging.info('\ta) Product optimized to other structure for {}, product {} to {} {}'.format(instance_name,chemid, fragChemid[0], fragChemid[1]))                
+                    
+                    obj.products=[]
+
+                    for prod in obj.products_final:
+                        obj.products.append(prod)
+                    
+                    obj.products_final=[] 
+
+
+                    if all([pi == 1 for pi in products_waiting_status[index]]):
+                        self.species.reac_ts_done[index] = 3
+ 
+>>>>>>> master
+                elif self.species.reac_ts_done[index] == 3:
+                    # wait for the optimization to finish 
+                    # if two st_pt are the same in the products, we make them exactly identical otherwise
+                    # the different ordering of the atoms causes the chemid of the second to be seemingly wrong
+                    for i, st_pt_i in enumerate(obj.products):
+                        for j, st_pt_j in enumerate(obj.products):
+                            if st_pt_i.chemid == st_pt_j.chemid and i < j:
+                                obj.products[j] = obj.products[i]
+                    err = 0
+                    for st_pt in obj.products:
+                        chemid = st_pt.chemid
+                        orig_geom = copy.deepcopy(st_pt.geom)
+                        e, st_pt.geom = self.qc.get_qc_geom(str(st_pt.chemid) + '_well', st_pt.natom)
+                        if e < 0:
+                            logging.info('\tProduct optimization failed for {}, product {}'.format(instance_name,st_pt.chemid))
+                            self.species.reac_ts_done[index] = -999
+                            rr = -1
+                        elif e != 0:
+                            err = -1
+                        else:
+                            e2, st_pt.energy = self.qc.get_qc_energy(str(st_pt.chemid) + '_well')
+                            e2, st_pt.zpe = self.qc.get_qc_zpe(str(st_pt.chemid) + '_well')
+                            st_pt.bond_mx()
+                            st_pt.characterize(0)  # not allowed to use the dimer option here
+                            st_pt.calc_chemid()
+                            if chemid != st_pt.chemid:
+                                # product was optimized to another structure, give warning but don't remove reaction
+                                logging.info('\t b) Product optimized to other structure for {}, product {} to {}'.format(instance_name,chemid,st_pt.chemid))
+                                e, st_pt.geom = self.qc.get_qc_geom(str(st_pt.chemid) + '_well', st_pt.natom)
+                                if e < 0:
+                                    err = -1
                     if err == 0:
                         self.species.reac_ts_done[index] = 4
 
                 elif self.species.reac_ts_done[index] == 4:
                     # Do the TS and product optimization
-                    
-                    #make a stationary point object of the ts
-                    bond_mx = np.zeros((self.species.natom, self.species.natom), dtype=int)
+                    # make a stationary point object of the ts
+                    bond_mx = np.zeros((self.species.natom, self.species.natom))
                     for i in range(self.species.natom):
                         for j in range(self.species.natom):
                             bond_mx[i][j] = max(self.species.bond[i][j],obj.product_bonds[i][j])
@@ -265,10 +363,11 @@ class ReactionGenerator:
                     obj.ts_opt.do_optimization()
                     #do the products optimizations
                     for st_pt in obj.products:
+					#do the products optimizations
                         #check for products of other reactions that are the same as this product
                         #in the case such products are found, use the same Optimize object for both
-                        new = 1
                         for i, inst_i in enumerate(self.species.reac_inst):
+                            new=1
                             if not i == index:
                                 obj_i = self.species.reac_obj[i]
                                 if self.species.reac_ts_done[i] > 3:
@@ -282,6 +381,21 @@ class ReactionGenerator:
                             prod_opt = Optimize(st_pt,self.par,self.qc)
                             prod_opt.do_optimization()
                         obj.prod_opt.append(prod_opt)
+
+                    for st_pt in obj.products:                        
+                    #section where comparing products in same reaction occurs
+                        if len(obj.prod_opt) > 0:
+                            for j, st_pt_opt in enumerate(obj.prod_opt):
+                                if st_pt.chemid == st_pt_opt.species.chemid:
+                                    if len(obj.prod_opt) > j:
+                                        prod_opt = obj.prod_opt[j]
+                                        break
+
+                    elog=open("energy.log",'a')
+                    for prod_opt in obj.prod_opt:
+                        elog.write("prod_opt: {} |\tenergy: {}\n".format(prod_opt.species.chemid, prod_opt.species.energy))
+                    elog.close()
+
                     self.species.reac_ts_done[index] = 5
 
                 elif self.species.reac_ts_done[index] == 5:
@@ -293,12 +407,14 @@ class ReactionGenerator:
                         opts_done = 0
                         obj.ts_opt.do_optimization()
                     if obj.ts_opt.shigh == -999:
+                        logging.info("Reaction {} ts_opt_shigh failure".format(instance_name))
                         fails = 1
                     for pr_opt in obj.prod_opt:
                         if not pr_opt.shir == 1:
                             opts_done = 0
                             pr_opt.do_optimization()
                         if pr_opt.shigh == -999:
+                            logging.info("Reaction {} pr_opt_shigh failure".format(instance_name))
                             fails = 1
                     if fails:
                         self.species.reac_ts_done[index] = -999
@@ -311,7 +427,7 @@ class ReactionGenerator:
                     #continue to PES search in case a new well was found
                     if self.par.par['pes']:
                         #verify if product is monomolecular, and if it is new
-                        if len(obj.products) ==1:
+                        if len(obj.products)==1:
                             st_pt = obj.prod_opt[0].species
                             chemid = st_pt.chemid
                             energy = st_pt.energy
@@ -334,7 +450,12 @@ class ReactionGenerator:
                                         #wait a second and try again
                                         time.sleep(1)
                                         pass
-                                        
+           
+                        # copy the files of the species to an upper directory
+                        frags = obj.products
+                        for frag in frags:
+                            filecopying.copy_to_database_folder(self.species.chemid, frag.chemid, self.qc)
+
                     #check for wrong number of negative frequencies
                     neg_freq = 0
                     for st_pt in obj.products:
@@ -358,8 +479,8 @@ class ReactionGenerator:
                             os.remove('{}_im_extent.txt'.format(self.species.chemid))
                         postprocess.createPESViewerInput(self.species, self.qc, self.par)
                 elif self.species.reac_ts_done[index] == -999:
-                    if not self.species.reac_obj[index].instance_name in deleted:
-                        if self.par.par['delete_intermediate_files'] == 1:
+                    if self.par.par['delete_intermediate_files'] == 1:
+                        if not self.species.reac_obj[index].instance_name in deleted:
                             self.delete_files(self.species.reac_obj[index].instance_name)
                             deleted.append(self.species.reac_obj[index].instance_name)
                         
@@ -436,8 +557,7 @@ class ReactionGenerator:
             for ext in extensions:
                 # delete file
                 file = '.'.join([name, ext])
-                # print(file)
                 try:
                     os.remove(file)
-                except FileNotFoundError:
+                except OSError:
                     pass

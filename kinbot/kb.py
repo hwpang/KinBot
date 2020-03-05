@@ -1,4 +1,4 @@
-###################################################
+##################################################
 ##                                               ##
 ## This file is part of the KinBot code v2.0     ##
 ##                                               ##
@@ -21,7 +21,6 @@
 """
 This is the main class to run KinBot.
 It includes
-
 1. Reading the options defined by the user
 2. Optimizing the reactant, including frequency calculations,
 hindered rotor calculations, high-level calculations, according
@@ -30,14 +29,15 @@ to the user input file
 KinBot will search for
 4. call the reac_generator method to search for the reactions
 on the PES
-
 """
 from __future__ import print_function
 import sys
 import os
 import logging
 import datetime
+import time
 
+from kinbot import filecopying
 from kinbot import license_message
 from kinbot import postprocess
 from kinbot.homolytic_scissions import HomolyticScissions
@@ -63,7 +63,6 @@ def main():
 
     # initialize the parameters for this run
     par = Parameters(input_file)
-
     # set up the logging environment
     if par.par['verbose']:
         logging.basicConfig(filename='kinbot.log', level=logging.DEBUG)
@@ -127,6 +126,18 @@ def main():
     # initialize the qc instance
     qc = QuantumChemistry(par)
 
+    #only run filecopying if PES is turned on
+    #if par.par['pes']:
+        # check if this well was calcualted before in another directory
+        # this flag indicates that this kinbot run
+        # should wait for the information from another
+        # kinbot run to become available and copy the necessary information
+    #    wait_for_well = 1
+    #    while wait_for_well:
+    #        wait_for_well = filecopying.copy_from_database_folder(well0.chemid, well0.chemid, qc)
+    #        if wait_for_well:
+    #            time.sleep(1)
+
     # start the initial optimization of the reactant
     logging.info('Starting optimization of intial well')
     qc.qc_opt(well0, well0.geom)
@@ -177,6 +188,11 @@ def main():
     if well_opt.shigh == -999 or well_opt.sfreqhigh == -999:
         logging.error('Error with high level optimization of initial structure.')
         return
+    
+    #Only check for information if PES is turned on        
+    if par.par['pes']:
+        # check if the information on this well has to be copied to a database
+        filecopying.copy_to_database_folder(well0.chemid, well0.chemid, qc)
 
     # do the reaction search using heuristics
     if par.par['reaction_search'] == 1:
@@ -191,17 +207,16 @@ def main():
         logging.info('Starting the search for homolytic scission products')
         well0.homolytic_scissions = HomolyticScissions(well0, par, qc)
         well0.homolytic_scissions.find_homolytic_scissions()
-
     # initialize the master equation instance
     mess = MESS(par, well0)
     mess.write_input()
-    mesmer = MESMER(par, well0)
-    mesmer.write_input()
+    #mesmer = MESMER(par, well0)
+    #mesmer.write_input()
     if par.par['me'] == 1:
         logging.info('Starting Master Equation calculations')
         if par.par['me_code'] == 'mess':
             mess.run()
-        elif par.par['me_code'] == 'mesmer':
+        elif par.par['me_code'] == '#mesmer':
             mesmer.run()
         else:
             logging.error('Cannot recognize me code {}'.format(par.par['me_code']))

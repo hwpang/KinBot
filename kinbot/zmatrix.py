@@ -35,7 +35,6 @@ def make_zmat_from_cart(species, rotor, cart, mode):
     """
     natom = species.natom
     atom = species.atom
-    
     if mode == 0:
         a = species.dihed[rotor][0]
         b = species.dihed[rotor][1]

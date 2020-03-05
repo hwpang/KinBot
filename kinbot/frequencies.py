@@ -126,7 +126,7 @@ def get_frequencies(species, hess, geom):
 
     # STEP 3: project out internal rotations
 
-    # Build set of internal rotation vectors to project out
+    # Build set of internal rotaton vectors to project out
     R = []
     for rot in species.dihed:
         # mass weight the cartesian coordinates
