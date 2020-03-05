@@ -178,14 +178,6 @@ class IRC:
             err, geom = self.rxn.qc.get_qc_geom(irc_name,
                                                 self.rxn.species.natom, wait=0, allow_error=1)
             irc_prod_name = '{}_IRC_{}_prod'.format(instance_name, direction[0])
-=======
-            kwargs = self.rxn.qc.get_qc_arguments(irc_name,
-                                                  self.rxn.species.mult,
-                                                  self.rxn.species.charge,
-                                                  irc=direction.lower(),
-                                                  start_form_geom=start_from_geometry)
-            prod_kwargs = self.rxn.qc.get_qc_arguments(irc_name + '_prod', self.rxn.species.mult, self.rxn.species.charge)
->>>>>>> master
             if self.rxn.qc.qc == 'gauss':
                 # copy the chk file
                 try: 

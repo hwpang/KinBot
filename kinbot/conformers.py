@@ -370,11 +370,8 @@ class Conformers:
                 self.conf_status.append(-1)
         status = self.conf_status
 
-<<<<<<< HEAD
         geom = [np.zeros((self.species.natom, 3)) for st in status] # create placeholder for geoms
-=======
         lowest_conf = str(0).zfill(self.zf) # the index of the lowest conf, to be updated as we go
->>>>>>> master
 
         while 1:
             # check if conformational search is finished
@@ -418,15 +415,11 @@ class Conformers:
                         final_geoms.append(np.zeros((self.species.natom, 3)))
                
                 self.write_profile(status, final_geoms, energies)
-<<<<<<< HEAD
                 # copy the lowest energy geometry to the main directory
                 copyfile('{}.log'.format(job), '../{}.log'.format(job))
                 # the original file is not overwritten, but the geometry is updated in KinBot's memory
-                return 1, lowest_e_geom
-=======
                 return 1, lowest_conf, lowest_e_geom, lowest_energy
 
->>>>>>> master
             else:
                 if wait:
                     time.sleep(1)
