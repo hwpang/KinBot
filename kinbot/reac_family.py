@@ -29,7 +29,7 @@ import pkg_resources
 
 from kinbot import modify_geom
 
-def carry_out_reaction(rxn, step, command):
+def carry_out_reaction(rxn, step, command, sella):
     """
     Verify what has been done and what needs to be done
     
@@ -39,13 +39,13 @@ def carry_out_reaction(rxn, step, command):
     """
     if step > 0:
         status = rxn.qc.check_qc(rxn.instance_name)
-        if status != 'normal' and status != 'error': return step
+        if status != 'normal' and status != 'normal freq' and status != 'error': return step
 
     skipped = 0
 
     if step == 0:
         if rxn.qc.is_in_database(rxn.instance_name):
-            if rxn.qc.check_qc(rxn.instance_name) == 'normal': 
+            if rxn.qc.check_qc(rxn.instance_name) == 'normal' or rxn.qc.check_qc(rxn.instance_name) == 'normal freq': 
                 err, freq = rxn.qc.get_qc_freq(rxn.instance_name, rxn.species.natom)
                 if err == 0 and len(freq) > 0.:
                     err, geom = rxn.qc.get_qc_geom(rxn.instance_name, rxn.species.natom)
@@ -66,25 +66,40 @@ def carry_out_reaction(rxn, step, command):
     
     pcobfgs = 0
     if pcobfgs == 0:
-        #apply the geometry changes here and fix the coordinates that changed
-        change_starting_zero = []
-        for c in change:
-            c_new = [ci - 1 for ci in c[:-1]]
-            c_new.append(c[-1])
-            change_starting_zero.append(c_new)
-        if len(change_starting_zero) >0 :
-            success, geom = modify_geom.modify_coordinates(rxn.species, rxn.instance_name, geom, change_starting_zero, rxn.species.bond)
+        #apply the geometry changes internally and fix the coordinates that changed
+        #if not rxn.qc.sella or step < rxn.max_step - 1:
+        if 1:
+            change_starting_zero = []
             for c in change:
-                fix.append(c[:-1])
-            change = []
-        if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
-        elif step == 0 or skipped:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
-        elif step < rxn.max_step:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, fix=fix, change=change, release=release)
+                c_new = [ci - 1 for ci in c[:-1]]
+                c_new.append(c[-1])
+                change_starting_zero.append(c_new)
+            if len(change_starting_zero) > 0:
+                success, geom = modify_geom.modify_coordinates(rxn.species, rxn.instance_name, geom, change_starting_zero, rxn.species.bond)
+                if not rxn.qc.sella or step < rxn.max_step -1:
+                    for c in change:
+                        fix.append(c[:-1])
+                    change = []
+        if step > 0 and rxn.qc.sella:
+            app_traj = True
         else:
-            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, fix=fix, change=change,release=release)
+            app_traj = None
+        if step == rxn.max_step - 1 or skipped:
+            tight = True
+        else:
+            tight = False
+        if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'optmp2', rxn.species, geom, 1, rxn.qc.sella, 
+                    fix=fix, change=change, release=release, app_traj=app_traj, tight=True, singlejob=False)
+        elif step == 0 or skipped:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt0', rxn.species, geom, 0, rxn.qc.sella, 
+                    fix=fix, change=change, release=release, app_traj=app_traj, tight=tight)
+        elif step < rxn.max_step:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'preopt', rxn.species, geom, 0, rxn.qc.sella, 
+                    fix=fix, change=change, release=release, app_traj=app_traj, tight=tight, singlejob=False)
+        else:
+            step += rxn.qc.assemble_ase_template(rxn.instance_name, 'opt', rxn.species, geom, 1, rxn.qc.sella, 
+                    fix=fix, change=change, release=release, app_traj=app_traj, singlejob=False)
         
     else:
         # use the pcobfgs algorithm for the geometry update, currently disabled and abandoned

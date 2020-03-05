@@ -335,14 +335,16 @@ class Conformers:
         else:  # normal termination
             if freq:
                 status, zpe = self.qc.get_qc_zpe(job)
-                status, frequencies = self.qc.get_qc_freq(job)
-                if self.wellorts:
+                if status == -1: # unlikely to fail a freq calculation if opt didn't fail, but maybe
+                    return np.zeros((self.species.natom, 3)), 12
+                status, frequencies = self.qc.get_qc_freq(job, self.species.natom)
+                if self.species.wellorts:
                     if frequencies[0] > 0. or frequencies[1] < 0.:
-                        return np.zeros((self.species.natom, 3)), 10  # wrong number for imag freq
+                        return np.zeros((self.species.natom, 3)), 12  # wrong number for imag freq
                 elif frequencies[0] < 0.:
-                    return np.zeros((self.species.natom, 3)), 10  # wrong number for imag freq
+                    return np.zeros((self.species.natom, 3)), 12  # wrong number for imag freq
                 else:
-                    return geom, 0
+                    return geom, 11 # correct number of imag freqs
             else:
                 # check if all the bond lenghts are withing 10% or the original bond lengths
                 if geometry.equal_geom(self.species.bond, self.species.geom, geom, 0.10):
@@ -364,7 +366,7 @@ class Conformers:
         wait: wait for all the conformer calculations to finish before returning anything
         """
 
-        # TODO why is this like this?
+        # TODO why is this like this? initial value for status is -1?
         if len(self.conf_status) < self.conf:
             for i in range(len(self.conf_status), self.conf):
                 self.conf_status.append(-1)
@@ -384,9 +386,9 @@ class Conformers:
                     self.qc.qc_conf(self.species, geom[i], i, freq=1)  # TODO add MP2 flags!!!
                     status[i] = 1  # meaning that frequency calculation has started
             for i, si in enumerate(status):
+                print(self.species.chemid, i)
                 if si == 1:
                     status[i] = self.test_conformer(i, freq=1)[1]
-
             if all([si >= 10 for si in status]):  # all are done
                 lowest_energy = self.species.energy + self.species.zpe
                 lowest_e_geom = self.species.geom
@@ -395,7 +397,7 @@ class Conformers:
                 energies = []
                 for ci in range(self.conf):
                     si = status[ci]
-                    if si == 0:  # this is a valid confomer
+                    if si == 11:  # this is a valid confomer
                         if self.species.wellorts:
                             job = 'conf/' + self.species.name + '_' + str(ci).zfill(self.zf)
                         else:
@@ -416,7 +418,7 @@ class Conformers:
                
                 self.write_profile(status, final_geoms, energies)
                 # copy the lowest energy geometry to the main directory
-                copyfile('{}.log'.format(job), '../{}.log'.format(job))
+                # copyfile('{}.log'.format(job), '../{}.log'.format(job))
                 # the original file is not overwritten, but the geometry is updated in KinBot's memory
                 return 1, lowest_conf, lowest_e_geom, lowest_energy
 

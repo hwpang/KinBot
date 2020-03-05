@@ -166,7 +166,7 @@ class Optimize:
                                 logging.info('\tHigh level optimization failed for {}'.format(self.species.name))
                                 self.shigh = -999
                                 self.sfreqhigh = -999
-                            if status == 'normal':
+                            if status == 'normal' or status == 'normal freq':
                                 # finished successfully
                                 err, new_geom = self.qc.get_qc_geom(self.job_high, self.species.natom, wait=self.wait)
                                 
@@ -192,11 +192,12 @@ class Optimize:
                                     # geometry is as expected and normal modes are the same for TS
                                     err, self.species.geom = self.qc.get_qc_geom(self.job_high, self.species.natom)
                                     err, self.species.energy = self.qc.get_qc_energy(self.job_high)
+                                    self.shigh = 1
                                     if self.sfreqhigh == -1:
                                         # high level frequency did not start yet
                                         logging.info('\t\tStarting high level frequency calculation for {}'.format(self.species.name))
                                         # do the high level freq of a ts  TODO why ts???
-                                        self.qc.qc_freq(self.species, self.species.geom, high_level=1)
+                                        self.qc.qc_freq(self.species, str(self.species.chemid), self.species.geom, self.species.wellorts, high_level=1)
                                         self.sfreqhigh = 0 # set the freq high status to running
                                     if self.sfreqhigh == 0:
                                         # freq high level is running
@@ -206,7 +207,7 @@ class Optimize:
                                             # found an error
                                             logging.info('\tHigh level frequency calculation failed for {}'.format(self.species.name))
                                             self.sfreqhigh = -999  # note that shigh can still be successful
-                                        if status == 'normal':
+                                        if status == 'normal' or status == 'normal freq':
                                             # finished successfully
                                             err, self.species.freq = self.qc.get_qc_freq(self.job_high, self.species.natom)
                                             err, self.species.zpe = self.qc.get_qc_zpe(self.job_high)
@@ -303,10 +304,13 @@ class Optimize:
                     fr_file += '_well'
                 if self.par.par['high_level']:
                         fr_file += '_high'
-                fr_file = self.fr_file_name(self.par.par['high_level'])
-                hess = self.qc.read_qc_hess(fr_file, self.species.natom)
-                self.species.kinbot_freqs, self.species.reduced_freqs = frequencies.get_frequencies(self.species, hess, self.species.geom)
 
+                if self.qc.check_qc(fr_file) != 'normal freq': 
+                    hess = []
+                else:
+                    if self.qc.qc == 'gauss':
+                        hess = reader_gauss.read_hess(fr_file, self.species.natom)
+                self.species.kinbot_freqs, self.species.reduced_freqs = frequencies.get_frequencies(self.species, hess, self.species.geom)
 
                 # write the molpro input and read the molpro energy, if available
                 if self.par.par['single_point_qc'] == 'molpro':

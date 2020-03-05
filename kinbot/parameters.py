@@ -132,6 +132,12 @@ class Parameters:
             'one_reaction_comb' : 0,
             # Search for one specific reaction using family approach
             'one_reaction_fam' : 0,
+            # break the following bonds
+            'break_bonds' : [],
+            # form the following bonds
+            'form_bonds' : [],
+            # save all intermediate geometries and energies into a database
+            'save_all_points' : 0,
 
             # QUANTUM CHEMISTRY INFO
             # Which quantum chemistry code to use
@@ -183,7 +189,7 @@ class Parameters:
             'ppn': 1,
             # All memory parameters include the units as well, they are a string
             # Memory for AM1
-            'mem0': '1000i MW',
+            'mem0': '1000 MW',
             # Memory for search
             'mem': '1000 MW',
             # Memory for MP2 for MP2

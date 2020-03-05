@@ -39,7 +39,7 @@ class QuantumChemistry:
     A lot of the functionalities are delegated to the templates.
     """
     
-    def __init__(self,par):
+    def __init__(self, par, mult, charge):
         self.par = par
         self.qc = par.par['qc']
         self.method = par.par['method']
@@ -60,8 +60,8 @@ class QuantumChemistry:
         self.irc_stepsize = par.par['irc_stepsize']
         self.qc_command = par.par['qc_command']
         self.sella = par.par['sella']
-        self.mult = par.par['mult']
-        self.charge = par.par['charge']
+        self.mult = mult
+        self.charge = charge
         self.calcall_ts = par.par['calcall_ts']
         self.guessmix = par.par['guessmix']
 
@@ -92,7 +92,7 @@ class QuantumChemistry:
                 job += '_mp2'
                 self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
             elif high_level:
-                job = '_high'
+                job += '_high'
                 self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
             else:
                 self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
@@ -100,33 +100,34 @@ class QuantumChemistry:
             job = str(species.name)
             if mp2:
                 job += '_mp2'
-                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+                self.assemble_ase_template(job, 'optmp2', species, geom, species.wellorts, self.sella, fix=[], change=[])
             elif high_level:
                 job += '_high'
-                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, ts=0, fix=[], change=[])
+                self.assemble_ase_template(job, 'opthl', species, geom, species.wellorts, self.sella, fix=[], change=[])
             else:
                 self.assemble_ase_template(job, 'opt', species, geom, species.wellorts, self.sella, fix=[], change=[])
         
         return 0
 
 
-    def qc_freq(self, species, geom, high_level=0, mp2=0):
+    def qc_freq(self, species, name, geom, wellorts, high_level=0, mp2=0):
         """ 
         Creates a frequency calculation and runs it. Always done with internal calculation of the qc code.
         """
-        if species.wellorts == 0:
+
+        if wellorts == 0:
             job = str(species.chemid) + '_well'
         else:
-            job = str(species.name)
+            job = str(name)
 
         if mp2:
             job += '_mp2'
-            self.assemble_ase_template(job, 'freqmp2', species, geom, species.wellorts, 0, fix=[], change=[])
+            self.assemble_ase_template(job, 'freqmp2', species, geom, wellorts, 0, fix=[], change=[])
         elif high_level:
-            job = '_high'
-            self.assemble_ase_template(job, 'freqhl', species, geom, species.wellorts, 0, fix=[], change=[])
+            job += '_high'
+            self.assemble_ase_template(job, 'freqhl', species, geom, wellorts, 0, fix=[], change=[])
         else:
-            self.assemble_ase_template(job, 'freq', species, geom, species.wellorts, 0, fix=[], change=[])
+            self.assemble_ase_template(job, 'freq', species, geom, wellorts, 0, fix=[], change=[])
 
         return 0
 
@@ -202,14 +203,20 @@ class QuantumChemistry:
         return 0
 
 
-    def submit_qc(self, job, mem, memu, singlejob=1):
+    def submit_qc(self, job, mem, memu, freq, singlejob):
         """
         Submit a job to the queue, unless the job:
             * has finished with Normal termination
             * has finished with Error termination
             * is currently running
-        However, if the optional parameter singlejob is set to zero, then 
-        the job is run only if it has finished. It might have been successful or not. (??)
+        It means that the job is only submitted if it's
+            * not running
+            * never started
+            * was killed half way
+
+        However, if the optional parameter singlejob is set to False, then 
+        the job is run only if it has finished, which means that Normal or Error 
+        termination are both acceptable finish states in this case.
         This is for continuations, when the continuing jobs overwrite each other.
         If the number of jobs in the queue is larger than the user-set limit,
         KinBot will park here until resources are freed up.
@@ -218,13 +225,17 @@ class QuantumChemistry:
         if self.queue_job_limit > 0:
             self.limit_jobs()
 
-        check = self.check_qc(job)
-        if singlejob == 1:
-            if check != 0: 
-                return 0  # either normal or error termination, but is in database and done
+        check = self.check_qc(job) # returns 0, 'running', 'normal', 'normal freq', or 'error'
+        if freq:
+            if check == 'running' or check == 'normal freq' or check == 'error':
+                return 0
         else:
-            if check == 'running': 
-                return 0  # still running
+            if singlejob == True:
+                if check != 0: # running or finished, so no need to submit again 
+                    return 0 
+            else:
+                if check == 'running': 
+                    return 0  # running
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -281,7 +292,7 @@ class QuantumChemistry:
         return 1  # important to keep it 1, this is the natural counter of jobs submitted
 
 
-    def get_qc_geom(self, job, natom, wait=0, allow_error = 0):
+    def get_qc_geom(self, job, natom, wait=0, allow_error=0):
         """
         Get the geometry from the ase database file.
         Returns it, with the following conditions about the status of the job.
@@ -310,7 +321,7 @@ class QuantumChemistry:
                     return 1, geom 
             else:
                 break
-        if check != 'normal':
+        if check != 'normal' and check != 'normal freq':
             if not allow_error:
                 if wait != 2: return -1, geom
 
@@ -360,7 +371,7 @@ class QuantumChemistry:
                     return 1, geom 
             else:
                 break
-        if check != 'normal':
+        if check != 'normal' and check != 'normal freq':
             if not allow_error:
                 if wait != 2: return -1, geom
 
@@ -398,7 +409,8 @@ class QuantumChemistry:
             else:
                 break
         
-        if check != 'normal': return -1, [0]
+        if check != 'normal' and check != 'normal freq':
+            return -1, [0]
 
         freq = []
         
@@ -486,47 +498,6 @@ class QuantumChemistry:
         
         return 0, zpe
 
-    def read_qc_hess(self, job, natom):
-        """
-        Read the hessian of a gaussian chk file
-        """
-        
-        check = self.check_qc(job)
-        if check != 'normal': 
-            return []
-        
-        #initialize hessian matrix
-        hess = np.zeros((3*natom,3*natom))
-        
-        if self.qc == 'gauss':
-            
-            fchk = str(job) + '.fchk'
-            chk = str(job) + '.chk'
-            if os.path.exists(chk):
-            #create the fchk file using formchk
-                os.system('formchk ' + job + '.chk > /dev/null')
-            
-            with open(fchk) as f:
-                lines = f.read().split('\n')
-            
-            nvals = 3 * natom * (3 * natom + 1) / 2
-
-            for index, line in enumerate(reversed(lines)):
-                if re.search('Cartesian Force Constants', line) != None:
-                    hess_flat = []
-                    n = 0
-                    while len(hess_flat) < nvals:
-                        hess_flat.extend([float(val) for val in lines[-index + n].split()])
-                        n += 1
-                    n = 0
-                    for i in range(3*natom):
-                        for j in range(i+1):
-                            hess[i][j] = hess_flat[n]
-                            hess[j][i] = hess_flat[n]
-                            n += 1
-                    break
-        return hess
-
 
     def is_in_database(self, job):
         """
@@ -551,7 +522,7 @@ class QuantumChemistry:
         Checks the status of the qc job.
         0: not in database (yet)
         'running'
-        data['status'] can be 'normal' or 'error'
+        data['status'] can be 'normal', 'normal freq', or 'error'
         """
         logging.debug('Checking job {}'.format(job))
         
@@ -638,19 +609,24 @@ class QuantumChemistry:
             return atom, geom, dummy
        
 
-    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[]):
+    def assemble_ase_template(self, job, task, species, geom, wellorts, sella, fix=[], change=[], release=[], 
+            app_traj=None, tight=True, singlejob=True):
         """
         Assemble the template for an ASE.
         """
 
         atom = copy.deepcopy(species.atom)
-        atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
-        wellorts = bool(wellorts)
+        if not sella:
+            atom, geom, dummy = self.add_dummy(atom, geom, species.bond) 
+        else:
+            dummy = []
 
         # frequency calculations are not done by sella
         nosella = [ 'freq', 'freqmp2', 'freqhigh']
         if task in nosella:
             sella = 0
+
+        chk = True
 
         # TASKS AND OPTIONS
         # OPTIMIZATIONS
@@ -661,12 +637,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            if wellorts:
-                singlejob = False
-            else:
-                singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -677,9 +648,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -690,9 +659,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = True
             mem = self.memhl
             memu = self.memhlu
 
@@ -703,11 +670,10 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = False
-            chk = True
             maxattempt = 2
-            singlejob = False
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         elif task == 'preopt':
             method = 'am1'
@@ -716,11 +682,10 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = True
-            chk = True
             maxattempt = 2
-            singlejob = False
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         # FREQUENCY
 
@@ -731,9 +696,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = False
             mem = self.mem
             memu = self.memu
 
@@ -744,9 +707,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess =  True
-            chk = True
             maxattempt = 1
-            singlejob = False
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -757,9 +718,7 @@ class QuantumChemistry:
             order = -1
             freq = True
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = False
             mem = self.memhl
             memu = self.memhlu
 
@@ -771,10 +730,8 @@ class QuantumChemistry:
             integral = ''
             order = wellorts
             freq = False
-            guess = True
-            chk = True
+            guess = False
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -784,10 +741,8 @@ class QuantumChemistry:
             integral = ''
             order = wellorts
             freq = False
-            guess = True
-            chk = True
+            guess = False
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -798,11 +753,10 @@ class QuantumChemistry:
             order = 0
             freq = False
             guess = False
-            chk = False
             maxattempt = 1
-            singlejob = True
             mem = self.mem0
             memu = self.mem0u
+            tight = False
 
         # HINDERED ROTORS
         elif task == 'hir':
@@ -812,9 +766,7 @@ class QuantumChemistry:
             order = wellorts
             freq = False
             guess = False
-            chk = False
             maxattempt = 2
-            singlejob = True
             mem = self.mem
             memu = self.memu
  
@@ -826,9 +778,7 @@ class QuantumChemistry:
             order = -1  # do not optimize
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -839,9 +789,7 @@ class QuantumChemistry:
             order = -1  # do not optimize
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
  
@@ -853,9 +801,7 @@ class QuantumChemistry:
             order = 0  
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.mem
             memu = self.memu
 
@@ -866,9 +812,7 @@ class QuantumChemistry:
             order = 0  
             freq = False
             guess = True
-            chk = True
             maxattempt = 1
-            singlejob = True
             mem = self.memmp2
             memu = self.memmp2u
 
@@ -914,35 +858,36 @@ class QuantumChemistry:
 
         #SUBSTITUTE TEMPLATES 
         
-        if 1:  # THIS IS JUST HERE WHILE TESTING, WILL NEED TO DELETE AND UNINDENT
-            template = template.format(label=job, 
-                                       atom=list(atom), 
-                                       geom=[list(gi) for gi in geom], 
-                                       ppn=self.ppn,
-                                       method=method,
-                                       basis=basis,
-                                       mult=self.mult,
-                                       charge=self.charge,
-                                       chk=chk,
-                                       guess=guess,
-                                       integral=integral,
-                                       dummy=dummy,
-                                       sella=self.sella,
-                                       order=order,
-                                       freq=freq,
-                                       task=task,
-                                       irc_maxpoints=self.irc_maxpoints,
-                                       irc_stepsize=self.irc_stepsize,
-                                       qc=self.qc,
-                                       fix=fix,
-                                       change=change,
-                                       release=release,
-                                       maxattempt=maxattempt,
-                                       qc_command=self.qc_command,
-                                       guessmix=self.guessmix,
-                                       calcall_ts=self.calcall_ts,
-                                       mem=mem,
-                                       memu=memu)
+        template = template.format(label=job, 
+                                   atom=list(atom), 
+                                   geom=[list(gi) for gi in geom], 
+                                   ppn=self.ppn,
+                                   method=method,
+                                   basis=basis,
+                                   mult=self.mult,
+                                   charge=self.charge,
+                                   chk=chk,
+                                   guess=guess,
+                                   integral=integral,
+                                   dummy=dummy,
+                                   sella=sella,
+                                   order=order,
+                                   freq=freq,
+                                   task=task,
+                                   irc_maxpoints=self.irc_maxpoints,
+                                   irc_stepsize=self.irc_stepsize,
+                                   qc=self.qc,
+                                   fix=fix,
+                                   change=change,
+                                   release=release,
+                                   maxattempt=maxattempt,
+                                   qc_command=self.qc_command,
+                                   guessmix=self.guessmix,
+                                   calcall_ts=self.calcall_ts,
+                                   mem=mem,
+                                   memu=memu,
+                                   app_traj=app_traj,
+                                   tight=tight)
 
 
         f_out = open('{}.py'.format(job),'w')
@@ -950,7 +895,7 @@ class QuantumChemistry:
         f_out.close()
 
         # this will return the same number as submit_qc
-        return self.submit_qc(job, mem, memu, singlejob)
+        return self.submit_qc(job, mem, memu, freq, singlejob)
 
 
     def limit_jobs(self):

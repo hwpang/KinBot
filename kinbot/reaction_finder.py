@@ -2177,8 +2177,6 @@ class ReactionFinder:
         reac_step: the step at which the search is at
         reac_scan_energy: for each reaction the energy as a function of steps, only used for scanning type searches, e.g. R_Addition_MultipleBond
         rec_ts_done: the last calculations is submitted in the sequence
-        reac_ts_geom: the geometry of the TS
-        reac_ts_freq: the freqencies of the TS
         reac_name: the base name of the file to run - created for each reaction later
         """
         
@@ -2188,8 +2186,7 @@ class ReactionFinder:
         self.species.reac_step += [0 for i in range(len(reac_list))]
         self.species.reac_scan_energy += [[] for i in range(len(reac_list))]
         self.species.reac_ts_done += [0 for i in range(len(reac_list))] 
-        self.species.reac_ts_geom += [0 for i in range(len(reac_list))]
-        self.species.reac_ts_freq += [0 for i in range(len(reac_list))]
+        self.species.reac_ts_freq_done += [0 for i in range(len(reac_list))] 
         
         for i in range(len(reac_list)):
             if reac_id == 'intra_H_migration':

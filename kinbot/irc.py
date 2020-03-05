@@ -141,15 +141,14 @@ class IRC:
                 direction = 'Backward'
 
             odft = self.rxn.species.mult > 1
-<<<<<<< HEAD
 
             if direction == 'Forward':
-                if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+                if self.rxn.scan or 'R_Addition_MultipleBond' in self.rxn.instance_name:
                     self.rxn.qc.assemble_ase_template(irc_name, 'ircfmp2', self.rxn.species, geom, 0, self.par.par['sella'])
                 else:
                     self.rxn.qc.assemble_ase_template(irc_name, 'ircf', self.rxn.species, geom, 0, self.par.par['sella'])
             else:
-                if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+                if self.rxn.scan or 'R_Addition_MultipleBond' in self.rxn.instance_name:
                     self.rxn.qc.assemble_ase_template(irc_name, 'ircrmp2', self.rxn.species, geom, 0, self.par.par['sella'])
                 else:
                     self.rxn.qc.assemble_ase_template(irc_name, 'ircr', self.rxn.species, geom, 0, self.par.par['sella'])
@@ -190,7 +189,7 @@ class IRC:
 
             odft = self.rxn.species.mult > 1
 
-            if rxn.scan or 'R_Addition_MultipleBond' in rxn.instance_name:
+            if self.rxn.scan or 'R_Addition_MultipleBond' in self.rxn.instance_name:
                 self.rxn.qc.assemble_ase_template(irc_prod_name, 'prodircmp2', self.rxn.species, geom, 0, self.par.par['sella'])
             else:
                 self.rxn.qc.assemble_ase_template(irc_prod_name, 'prodirc', self.rxn.species, geom, 0, self.par.par['sella'])

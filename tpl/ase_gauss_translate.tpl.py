@@ -15,7 +15,10 @@ kwargs = {{
 }}
 
 if chk:
-    kwargs['chk'] = label
+    try:
+        kwargs['chk'] = label[label.index('/')+1:] # remove the directory if it was there
+    except:
+        kwargs['chk'] = label
 if guess:
     kwargs['guess'] = 'Read'
 if len(integral) > 0:

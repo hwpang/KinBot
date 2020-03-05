@@ -124,7 +124,7 @@ def main():
     start_name = well0.name
 
     # initialize the qc instance
-    qc = QuantumChemistry(par)
+    qc = QuantumChemistry(par, par.par['mult'], par.par['charge'])
 
     #only run filecopying if PES is turned on
     #if par.par['pes']:
@@ -146,12 +146,12 @@ def main():
     if err < 0:
         logging.error('Error with initial structure optimization.')
         return
-    logging.info('Starting frequency calculation of intial well')
-    qc.qc_freq(well0, well0.geom)
+    logging.info('Starting frequency calculation of initial well')
+    qc.qc_freq(well0, str(well0.chemid), well0.geom, 0)
     err, well0.freq = qc.get_qc_freq(str(well0.chemid) + '_well',
                                      well0.natom, wait=1)
     if err < 0:
-        logging.error('Error with initial structure optimization.')
+        logging.error('Error with initial structure frequency.')
         return
 
     if any(well0.freq[i] <= 0 for i in range(len(well0.freq))):
@@ -170,8 +170,8 @@ def main():
     logging.info('Starting MP2 optimization of intial well')
     qc.qc_opt(well0, well0.geom, mp2=1)
     err, geom = qc.get_qc_geom(str(well0.chemid) + '_well_mp2', well0.natom, 1)
-    logging.info('Starting MP2 frequency calculation of intial well')
-    qc.qc_freq(well0, well0.geom, mp2=1)
+    logging.info('Starting MP2 frequency calculation of initial well')
+    qc.qc_freq(well0, str(well0.chemid), geom, 0, mp2=1)
     err, freq = qc.get_qc_freq(str(well0.chemid) + '_well_mp2', well0.natom, 1)
 
     # characterize again and look for differences

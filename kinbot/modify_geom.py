@@ -146,8 +146,8 @@ def modify_coordinates(species, name, geom, changes, bond, write_files=0):
     new_geom = copy.deepcopy(geom)
     step = append_geom(species.natom, step, 0., species.atom, new_geom, np.zeros((species.natom*3)), atoms_list, f_out=f_out)
 
-    # change dihedrals, if necessary
     for ci in changes:
+        # change dihedrals, if necessary
         if len(ci) == 5:
             zmat_atom, zmat_ref, zmat, zmatorder = zmatrix.make_zmat_from_cart(species, ci[:-1], new_geom, 2)
             # write_zmat(zmat_atom, zmat_ref, zmat, new_geom, species.atom)

@@ -76,8 +76,7 @@ class StationaryPoint:
         self.reac_name = []  # holds the file name
         self.reac_step = []
         self.reac_ts_done = []
-        self.reac_ts_geom = []
-        self.reac_ts_freq = []
+        self.reac_ts_freq_done = []
         self.reac_scan_energy = []
 
         # Instance of HomolyticScissions class
