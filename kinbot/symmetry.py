@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 import os,sys
 import logging
 import numpy as np
@@ -159,10 +140,10 @@ def calculate_symmetry(species):
             cyc_atomid = [species.atomid[ci] for ci in cyc]
             symm = 0
             for i in range(len(cyc)):
-                new_order = np.roll(np.array(cyc_atomid),-i)
+                new_order = np.roll(np.array(cyc_atomid), -i)
                 if all([cyc_atomid[at] == new_order[at] for at in range(len(cyc))]):
                     symm += 1
-                new_order_reversed = np.roll(np.array(cyc_atomid[::-1]),-i)
+                new_order_reversed = np.roll(np.array(cyc_atomid[::-1]), -i)
                 if all([cyc_atomid[at] == new_order_reversed[at] for at in range(len(cyc))]):
                     symm += 1
             #additional patch: if an atom has two identical neighbors 
@@ -171,7 +152,7 @@ def calculate_symmetry(species):
             if symm > 1:
                 divide = 1
                 for at in cyc:
-                    nei = get_neighbors(species,at)
+                    nei = get_neighbors(species, at)
                     cyc_nei = [ni for ni in nei if ni in cyc]
                     other_nei = [ni for ni in nei if ni not in cyc]
                     if len(other_nei) > 1:

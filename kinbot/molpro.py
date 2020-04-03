@@ -1,24 +1,6 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 import os
 import pkg_resources
+import numpy as np
 
 from kinbot import constants
 
@@ -30,7 +12,6 @@ class Molpro:
     def __init__(self, species, par):
         self.species = species
         self.par = par
-        # self.qc = qc
 
     def create_molpro_input(self):
         """
@@ -41,7 +22,7 @@ class Molpro:
         if self.par.par['single_point_template'] == '':
             tpl_file = pkg_resources.resource_filename('tpl', 'molpro.tpl')
         else:
-            tpl_file = self.par.par['single_point_template']  
+            tpl_file = self.par.par['single_point_template']
         with open(tpl_file) as f:
             file = f.read()
 
@@ -58,17 +39,20 @@ class Molpro:
 
         nelectron -= self.species.charge
 
+        symm = self.molpro_symm()
+        spin = self.species.mult - 1
+
         with open('molpro/' + fname + '.inp', 'w') as outf:
             outf.write(file.format(name=fname,
                                    natom=self.species.natom,
                                    geom=geom,
                                    nelectron=nelectron,
-                                   spin=self.species.mult - 1,
+                                   symm=symm,
+                                   spin=spin,
                                    charge=self.species.charge
                                    ))
 
-
-    def get_molpro_energy(self, key='MYENERGY'):
+    def get_molpro_energy(self, key):
         """
         Verify if there is a molpro output file and if yes, read the energy
         key is the keyword for the energy we want to read
@@ -87,7 +71,7 @@ class Molpro:
 
             for index, line in enumerate(reversed(lines)):
                 if ('SETTING ' + key) in line:
-                    return 1, float(line.split()[2])
+                    return 1, float(line.split()[3])
         else:
             return 0, -1
 
@@ -95,32 +79,47 @@ class Molpro:
         """
         write a pbs file for the molpro input file
         """
-
         fname = str(self.species.chemid)
         if self.species.wellorts:
             fname = self.species.name
-        
+
         # open the template head and template
-        molpro_head = pkg_resources.resource_filename('tpl', self.par.par['queuing'] + '.tpl')
+        molpro_head = pkg_resources.resource_filename(
+                'tpl',
+                self.par.par['queuing'] + '.tpl')
         with open(molpro_head) as f:
             tpl_head = f.read()
-        molpro_tpl = pkg_resources.resource_filename('tpl', self.par.par['queuing'] + '_molpro.tpl')
+        molpro_tpl = pkg_resources.resource_filename(
+                        'tpl',
+                        self.par.par['queuing'] + '_molpro.tpl')
         with open(molpro_tpl) as f:
             tpl = f.read()
         # substitution
-        with open('molpro/' + fname + '.' + self.par.par['queuing'], 'w' ) as f:
-            if self.par.par['queue_name'] == 'pbs':
-                f.write((tpl_head + tpl).format(name=fname, ppn=self.par.par['single_point_ppn'], queue_name=self.par.par['queue_name'], dir='molpro'))
-            elif self.par.par['queue_name'] == 'slurm':
-                f.write((tpl_head + tpl).format(name=fname, ppn=self.par.par['single_point_ppn'], queue_name=self.par.par['queue_name'], dir='molpro', slurm_feature=self.par.par['slurm_feature']))
-
-        #command = ['qsub', 'run_molpro.pbs']
-        #process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        #out, err = process.communicate()
-        #out = out.decode()
-        #pid = out.split('\n')[0].split('.')[0]
+        with open('molpro/' + fname + '.' + self.par.par['queuing'], 'w') as f:
+            if self.par.par['queuing'] == 'pbs':
+                f.write((tpl_head + tpl).format(
+                        name=fname,
+                        ppn=self.par.par['single_point_ppn'],
+                        queue_name=self.par.par['queue_name'],
+                        dir='molpro',
+                        command=self.par.par['single_point_command']))
+            elif self.par.par['queuing'] == 'slurm':
+                f.write((tpl_head + tpl).format(
+                        name=fname,
+                        ppn=self.par.par['single_point_ppn'],
+                        queue_name=self.par.par['queue_name'],
+                        dir='molpro',
+                        command=self.par.par['single_point_command'],
+                        slurm_feature=self.par.par['slurm_feature']))
 
         return 0
 
-
-
+    def molpro_symm(self):
+        if np.array_equal(self.species.atom, ['O']) and self.species.mult == 3:
+            return 4
+        if np.array_equal(self.species.atom, ['O', 'O']) \
+                and self.species.mult == 3:
+            return 4
+        if np.array_equal(sorted(self.species.atom), sorted(['O', 'H'])) \
+                and self.species.mult == 3:
+            return 2

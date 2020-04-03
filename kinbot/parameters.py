@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 """
 File that contains all the default and user-defined parameters for the
 reaction search.
@@ -28,8 +9,7 @@ from __future__ import with_statement
 import os
 import sys
 import json
-import logging;
-
+import logging
 import numpy as np
 
 
@@ -70,11 +50,16 @@ class Parameters:
             'reaction_search': 1,
             # Which reaction families to include in the search
             'families': ['all'],
+            # Which reaction families to skip in the search
+            'skip_families' : ['none'],
+            # Which chemids to skip kinbot runs for during PES calculations
+            'skip_chemids': ['none'],
             # break all single bonds to find the barriers
             # of potential homolytic scissions
             'homolytic_scissions': 0,
             # if requested with specific_reaction = 1
             # then only these bonds are broken and formed
+            # atom index for break/form bonds starts at 0
             'specific_reaction': 0,
             'break_bonds': [],
             'form_bonds': [],
@@ -143,23 +128,32 @@ class Parameters:
             'method': 'b3lyp',
             # Basis set to use
             'basis': '6-31G',
+            # for Gaussian, request CalcAll for TS optimization
+            'calcall_ts': 0,
             # Quantum chemistry method to use for high-level L2
             'high_level_method': 'M062X',
             # Basis set to use for high-level
             'high_level_basis': '6-311++G(d,p)',
             # Integral grid for Gaussian, only for the high-level calculations
             'integral': '',
+            # Optimization threshold
+            'opt': '',
             # for Gaussian irc: IRC(MaxPoints=n)
             'irc_maxpoints': 30,
             # for Gaussian irc, IRC(StepSize=n)
             'irc_stepsize': 20,
+            # for Gaussian, allow Guess=(Mix,Always) 
+            'guessmix' : 0,
             # name of the single point code's name
             'single_point_qc': 'molpro',
             # Name of the template for the single-point calculation (L3)
             # If not specified, then the tpl/[single_point_qc].inp is used
             'single_point_template': '',
-            # if there is a key (e.g., Molpro), what it is to read L3
-            "single_point_key": "MYENERGY",
+            # The keyword to be searched for in Molpro for the desired
+            # energy. Compulsory is Molpro energies are used. 
+            "single_point_key": '',
+            # Command string to be used for single point energy calculation
+            "single_point_command": '',
 
             # COMPUTATIONAL ENVIRONEMNT
             # Which queuing system to use
@@ -176,11 +170,14 @@ class Parameters:
             'single_point_ppn': 1,
             # This many spaces can be used for numbering files, e.g., in ga
             'zf': 4,
+            # delete intermetidate files
+            'delete_intermediate_files' : 0,
             # Scratch directory
             'scratch': '/scratch/jzador',
             # User name
             'username': 'jzador',
-
+            # Max. number of job from user in queue, if negative, ignored
+            'queue_job_limit' : -1,
 
             # MASTER EQUATION
             # Which ME code to use:
@@ -202,6 +199,9 @@ class Parameters:
             'Masses': [4.0, 87.0],
             # MESMER specific keywords
             'mesmer_command': 'mesmer',
+
+            # for development
+            'test': 0,
         }
 
         if self.input_file is not None:

@@ -1,28 +1,8 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 import os, sys
 import subprocess
 import logging
 import numpy as np
 import re
-import time
 import time
 import copy
 import pkg_resources
@@ -32,6 +12,8 @@ from ase.db import connect
 from kinbot import constants
 from kinbot import geometry
 
+from shutil import copyfile
+
 class QuantumChemistry:
     """
     This class provides the link between KinBot and the qc code
@@ -39,7 +21,7 @@ class QuantumChemistry:
     the jobs for success or failure
     """
     
-    def __init__(self,par):
+    def __init__(self, par):
         self.par = par
         self.qc = par.par['qc']
         self.method = par.par['method']
@@ -47,6 +29,7 @@ class QuantumChemistry:
         self.high_level_method = par.par['high_level_method']
         self.high_level_basis = par.par['high_level_basis']
         self.integral = par.par['integral']
+        self.opt = par.par['opt']
         self.ppn = par.par['ppn']
         self.queuing = par.par['queuing']
         self.queue_name = par.par['queue_name']
@@ -62,8 +45,12 @@ class QuantumChemistry:
             self.slurm_feature = ''
         else:
             self.slurm_feature = '#SBATCH -C ' + par.par['slurm_feature']
-        
-    def get_qc_arguments(self, job, mult, charge, ts=0, step=0, max_step=0, irc=None, scan=0, high_level=0, hir=0):
+        self.queue_job_limit = par.par['queue_job_limit']
+        self.username = par.par['username']
+       
+
+    def get_qc_arguments(self, job, mult, charge, ts=0, step=0, max_step=0, irc=None, scan=0,
+                         high_level=0, hir=0, start_form_geom=0):
         """
         Method to get the argument to pass to ase, which are then passed to the qc codes.
         
@@ -89,14 +76,16 @@ class QuantumChemistry:
             'method': self.method, 
             'basis': self.basis, 
             'nprocshared' : self.ppn,
-            'mem' : '1000MW',
+            'mem' : '700MW',
             'chk' : job,
             'label': job, 
             'NoSymm' : 'NoSymm',
             'multiplicity': mult,
             'charge': charge,
-            'scf' : 'xqc',
+            'scf' : 'xqc'
             }
+            if self.par.par['guessmix'] == 1:
+                kwargs['guess'] = '(Mix,Always)'
             if ts:
                 # arguments for transition state searches
                 kwargs['method'] = 'am1'
@@ -111,30 +100,42 @@ class QuantumChemistry:
                 else:
                     kwargs['method'] = self.method
                     kwargs['basis'] = self.basis
-                    kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
-                    kwargs['freq'] = 'freq'
+                    if self.par.par['calcall_ts'] == 1:
+                        kwargs['opt'] = 'NoFreeze,TS,CalcAll,NoEigentest,MaxCycle=999'
+                        # not sending the frequency calculation for CalcAll
+                    else:
+                        kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'
+                        kwargs['freq'] = 'freq'
                     #kwargs['geom'] = 'AllCheck,NoKeepConstants'
                     #kwargs['guess'] = 'Read'
             else:
                 kwargs['freq'] = 'freq'
             if scan or 'R_Addition_MultipleBond' in job:
-                    kwargs['method'] = 'mp2'
-                    kwargs['basis'] = self.basis
+                kwargs['method'] = 'mp2'
+                kwargs['basis'] = self.basis
             if irc is not None: 
                 #arguments for the irc calculations
-                kwargs['geom'] = 'AllCheck,NoKeepConstants'
-                kwargs['guess'] = 'Read'
-                kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format(irc, self.irc_maxpoints, self.irc_stepsize)
+                if start_form_geom == 0:
+                    kwargs['geom'] = 'AllCheck,NoKeepConstants'
+                    kwargs['guess'] = 'Read'
+                    kwargs['irc'] = 'RCFC,{},MaxPoints={},StepSize={}'.format(irc, self.irc_maxpoints, self.irc_stepsize)
+                else:
+                    kwargs['irc'] = 'RCFC,CalcFC,{},MaxPoints={},StepSize={}'.format(irc, self.irc_maxpoints, self.irc_stepsize)
                 del kwargs['freq']
             if high_level:
                 kwargs['method'] = self.high_level_method
                 kwargs['basis'] = self.high_level_basis
+                if len(self.opt) > 0:
+                    kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999,{}'.format(self.opt)  # to overwrite possible CalcAll
+                else:
+                    kwargs['opt'] = 'NoFreeze,TS,CalcFC,NoEigentest,MaxCycle=999'  # to overwrite possible CalcAll
                 kwargs['freq'] = 'freq'
                 if len(self.integral) > 0:
                     kwargs['integral'] = self.integral
             if hir:
                 kwargs['opt'] = 'ModRedun,CalcFC'
-                del kwargs['freq']
+                if (not ts) or (ts and (not self.par.par['calcall_ts'])):
+                    del kwargs['freq']  
                 if ts:
                     kwargs['opt'] = 'ModRedun,CalcFC,TS,NoEigentest,MaxCycle=999'
             return kwargs
@@ -205,7 +206,7 @@ class QuantumChemistry:
                 geom = np.concatenate((geom, [d]), axis=0)
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_hir.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_hir.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job, 
                                    kwargs=kwargs, 
@@ -258,7 +259,7 @@ class QuantumChemistry:
                 geom = np.concatenate((geom, [d]), axis=0)
         dummy = [d.tolist() for d in dummy]
     
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ring_conf.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ring_conf.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job,
                                    kwargs=kwargs,
@@ -313,7 +314,7 @@ class QuantumChemistry:
                 geom = np.concatenate((geom, [d]), axis=0)
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job,
                                    kwargs=kwargs, 
@@ -332,7 +333,7 @@ class QuantumChemistry:
 
         return 0
 
-    def qc_opt(self, species, geom, high_level = 0, mp2 = 0):
+    def qc_opt(self, species, geom, high_level=0, mp2=0):
         """ 
         Creates a geometry optimization input and runs it. 
         """
@@ -342,12 +343,38 @@ class QuantumChemistry:
             job = str(species.chemid) + '_well_high'
         if mp2:
             job = str(species.chemid) + '_well_mp2'
-        
-        kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level = high_level)
+       
+        #TODO: Code exceptions into their own function/py script that opt can call.
+        #TODO: Fix symmetry numbers for calcs as well if needed
+        #O2
+        fi=open('kb.log', 'a') 
+        fi.write("chemid= {0}".format(species.chemid)) 
+        if species.chemid == "320320000000000000001": 
+            mult=3 
+            kwargs = self.get_qc_arguments(job, mult, species.charge, high_level=high_level) 
+            fi.write("\tmult= {0}\n".format(mult)) 
+        #CH2 
+        elif species.chemid == "140260020000000000001": 
+            mult=3 
+            kwargs = self.get_qc_arguments(job, mult, species.charge, high_level=high_level) 
+            fi.write("\tmult= {0}\n".format(mult)) 
+        #others 
+        else: 
+            mult=species.mult 
+            kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level=high_level) 
+            fi.write("\tmult= {0}\n".format(mult)) 
+        fi.close()         
+ 
+        kwargs = self.get_qc_arguments(job, species.mult, species.charge, high_level=high_level)
         if self.qc == 'gauss':
             kwargs['opt'] = 'CalcFC, Tight'
         if mp2:
             kwargs['method'] = 'mp2'
+        if high_level:
+            if self.opt:
+                kwargs['opt'] = 'CalcFC,{}'.format(self.opt)
+        # the integral is set in the get_qc_arguments parts, bad design
+
         
         atom = copy.deepcopy(species.atom)
         
@@ -358,7 +385,7 @@ class QuantumChemistry:
                 geom = np.concatenate((geom, [d]), axis=0)
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_opt_well.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job,
                                    kwargs=kwargs, 
@@ -372,9 +399,8 @@ class QuantumChemistry:
         f_out = open('{}.py'.format(job),'w')
         f_out.write(template)
         f_out.close()
-        
-        self.submit_qc(job)
 
+        self.submit_qc(job)
         return 0
 
     def qc_freq(self, species, geom, high_level = 0):
@@ -405,7 +431,7 @@ class QuantumChemistry:
                 del kwargs['NoSymm']
         dummy = [d.tolist() for d in dummy]
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_freq_well.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_freq_well.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job,
                                    kwargs=kwargs, 
@@ -435,7 +461,7 @@ class QuantumChemistry:
 
         kwargs = self.get_qc_arguments(job,species.mult,species.charge,ts = 1,step = 1,max_step=1,high_level = 1)
         
-        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.py.tpl'.format(qc = self.qc))
+        template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_ts_end.tpl.py'.format(qc = self.qc))
         template = open(template_file,'r').read()
         template = template.format(label=job, 
                                    kwargs=kwargs, 
@@ -462,14 +488,19 @@ class QuantumChemistry:
         However, if the optional parameter singlejob is set to zero, then 
         the job is run only if it has finished earlier with normal termination.
         This is for continuations, when the continuing jobs overwrite each other.
+        If the number of jobs in the queue is larger than the user-set limit,
+        KinBot will park here until resources are freed up.
         """
+
+        if self.queue_job_limit > 0:
+            self.limit_jobs()
 
         check = self.check_qc(job)
         if singlejob == 1:
             if check != 0: return 0
         else:
             if check == 'running': return 0
-
+        
 
         try: 
             if self.par.par['queue_template'] == '':
@@ -688,7 +719,7 @@ class QuantumChemistry:
 
         #open the database
         rows = self.db.select(name = job)
-        
+        energy=0
         #take the last entry
         for row in rows:
             if hasattr(row, 'data'):
@@ -730,7 +761,7 @@ class QuantumChemistry:
         
         return 0, zpe
 
-    def read_qc_hess(self,job, natom):
+    def read_qc_hess(self, job, natom):
         """
         Read the hessian of a gaussian chk file
         """
@@ -745,9 +776,9 @@ class QuantumChemistry:
         if self.qc == 'gauss':
             
             fchk = str(job) + '.fchk'
-            #if not os.path.exists(fchk):
+            if not os.path.exists(fchk):
             #create the fchk file using formchk
-            os.system('formchk ' + job + '.chk > /dev/null')
+                os.system('formchk ' + job + '.chk > /dev/null')
             
             with open(fchk) as f:
                 lines = f.read().split('\n')
@@ -770,7 +801,8 @@ class QuantumChemistry:
                     break
         return hess
 
-    def is_in_database(self,job):
+
+    def is_in_database(self, job):
         """
         Checks if the current job is in the database:
         """
@@ -792,16 +824,13 @@ class QuantumChemistry:
         """
         Checks the status of the qc job.
         """
-        if self.qc == 'gauss':
-            log_file = job + '.log'
-        elif self.qc == 'nwchem':
-            log_file = job + '.out'
-        log_file_exists = os.path.exists(log_file)
+        logging.debug('Checking job {}'.format(job))
         
         devnull = open(os.devnull, 'w')
         if self.queuing == 'pbs':
             command = 'qstat -f | grep ' + '"Job Id: ' + self.job_ids.get(job,'-1') + '"' + ' > /dev/null'
             if int(subprocess.call(command, shell = True, stdout=devnull, stderr=devnull)) == 0: 
+                logging.debug('Job is running')
                 return 'running'
         elif self.queuing == 'slurm':
             #command = 'scontrol show job ' + self.job_ids.get(job,'-1') + ' | grep "JobId=' + self.job_ids.get(job,'-1') + '"' + ' > /dev/null'
@@ -819,6 +848,7 @@ class QuantumChemistry:
                         line = line[1:]
                     pid = line.split()[0]
                     if pid == self.job_ids.get(job,'-1'):
+                        logging.debug('Job is running')
                         return 'running'
         else:
             logging.error('KinBot does not recognize queuing system {}.'.format(self.queuing))
@@ -826,18 +856,58 @@ class QuantumChemistry:
             sys.exit()
         #if int(subprocess.call(command, shell = True, stdout=devnull, stderr=devnull)) == 0: 
         #    return 'running' 
-        if self.is_in_database(job) and log_file_exists: #by deleting a log file, you allow restarting a job
-            #open the database
-            rows = self.db.select(name = job)
-            data = None
-            #take the last entry
-            for row in rows:
-                if hasattr(row,'data'):
-                    data = row.data
-            if data is None:
-                return 0
-            else:
-                return data['status']
-        else: 
+        
+        if self.is_in_database(job):
+            for i in range(10):
+                
+                if self.qc == 'gauss':
+                    log_file = job + '.log'
+                elif self.qc == 'nwchem':
+                    log_file = job + '.out'
+                log_file_exists = os.path.exists(log_file)
+                if log_file_exists:
+                    logging.debug('Log file is present after {} iterations'.format(i))
+                    #by deleting a log file, you allow restarting a job
+                    #open the database
+                    rows = self.db.select(name = job)
+                    data = None
+                    #take the last entry
+                    for row in rows:
+                        if hasattr(row,'data'):
+                            data = row.data
+                    if data is None:
+                        logging.debug('Data is not in database...')
+                        return 0
+                    else:
+                        logging.debug('Returning status {}'.format(data['status']))
+                        return data['status']
+                else:
+                    logging.debug('Checking againg for log file')
+                    log_file_exists = os.path.exists(log_file)
+                    time.sleep(1)
+                
+            logging.debug('log file {} does not exist'.format(log_file))
+            return 0
+        else:
+            logging.debug('job {} is not in database'.format(job))
             return 0
             
+
+    def limit_jobs(self):
+        """
+        Check how many jobs are in the queue from the user, and if larger than the limit, 
+        then wait for resources to free up.
+        """
+
+        while 1:
+            if self.queuing == 'slurm':
+                command = ['squeue', '-h', '-u', '{}'.format(self.username)]
+            elif self.queuing == 'pbs':
+                command = ['qselect', '-u', '{}'.format(self.username)]
+            jobs = subprocess.check_output(command)
+
+            if len(jobs.split(b'\n')) < self.queue_job_limit:
+                return 0
+            time.sleep(30)
+
+

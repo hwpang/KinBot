@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 """
 This file contains the postprocessing of the KinBot run
 It includes
@@ -199,6 +180,9 @@ def createPESViewerInput(species,qc,par):
 
                 for i, prod_opt in enumerate(species.reac_obj[index].prod_opt):
                     st_pt = prod_opt.species
+                    pesdata=open("pesdata.txt",'a')
+                    pesdata.write("Species: {}\n\tEnergy: {}\n\tZPE: {}\n".format(st_pt.chemid, st_pt.energy, st_pt.zpe))
+                    pesdata.close()
                     # make twice the same file but with adifferent name
                     # TODO: is there no better way?
                     # this is for the pes viewer
@@ -209,6 +193,8 @@ def createPESViewerInput(species,qc,par):
                 if not name in bimolec_names:
                     bimolecs.append('{name} {energy:.2f}'.format(name=name, energy=energy))
                     bimolec_names.append(name)
+                
+
     # add the bimolecular products form the homolytic scissions
     if not species.homolytic_scissions is None:
         for index,hs in enumerate(species.homolytic_scissions.hss):
@@ -268,7 +254,6 @@ def createPESViewerInput(species,qc,par):
                     barrierless.append('{name} {react} {prod}'.format(name='b_' + str(index),
                                                                       react=species.chemid,
                                                                       prod=prod_name))
-
     # make strings from the different lists
     wells = '\n'.join(wells)
     bimolecs = '\n'.join(bimolecs)
@@ -280,7 +265,7 @@ def createPESViewerInput(species,qc,par):
     template_file_path = pkg_resources.resource_filename('tpl', fname + '.tpl')
     with open(template_file_path) as template_file:
         template = template_file.read()
-    template = template.format(id=species.chemid,wells=wells,bimolecs=bimolecs,ts=tss,barrierless=barrierless)
+    template = template.format(id=species.chemid, wells=wells, bimolecs=bimolecs, ts=tss, barrierless=barrierless)
     with open(fname,'w') as f:
         f.write(template)
 
@@ -290,5 +275,6 @@ def make_xyz(atoms,geom,name,dir):
     s.append('%i\n'%len(geom))
     for index in range(len(geom)):
         s.append('%s %.6f %.6f %.6f'%(atoms[index],geom[index][0],geom[index][1],geom[index][2]))
-    with open(dir + name + '.xyz', 'w') as f:
+    with open(dir + '/' + name + '.xyz', 'w') as f:
         f.write('\n'.join(s))
+

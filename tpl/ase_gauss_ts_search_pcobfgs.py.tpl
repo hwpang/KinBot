@@ -78,15 +78,19 @@ dyn = PCOBFGS(mol,
               force_consistent=False)
 
 db = connect('{working_dir}/kinbot.db')
-
 mol.rattle(0.05)
 
 try:
     dyn.run(fmax=0.01, steps = 400)
     e = mol.get_potential_energy()
-    db = connect('kinbot.db')
     data = {{'energy': e,'status' : 'normal'}}
 except RuntimeError: 
     data = {{'status' : 'error'}}
 
 db.write(mol, name=label, data=data)
+
+# add the finished stamp
+f = open(label + '.log','a')
+f.write('done\n')
+f.close()
+

@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 from __future__ import division
 import sys
 import os
@@ -356,8 +337,15 @@ class MESMER:
         with open(q_file) as f:
             tpl = f.read()
         submitscript = 'run_mesmer' + constants.qext[self.par.par['queuing']] 
-        with open(submitscript, 'w') as qu:
-            qu.write((tpl_head + tpl).format(name='mesmer', ppn=self.par.par['ppn'], queue_name=self.par.par['queue_name'], dir='me'))
+        with open(submitscript, 'a') as qu:
+            if self.par.par['queue_template'] == '':
+                if self.par.par['queuing'] == 'pbs':
+                    qu.write((tpl_head + tpl).format(name='mesmer', ppn=self.par.par['ppn'], queue_name=self.par.par['queue_name'], dir='me'))
+                elif self.par.par['queuing'] == 'slurm':
+                    qu.write((tpl_head + tpl).format(name='mesmer', ppn=self.par.par['ppn'], queue_name=self.par.par['queue_name'], dir='me'), slurm_feature='')
+            else:
+                qu.write(tpl_head)
+                qu.write(tpl)
 
         command = [constants.qsubmit[self.par.par['queuing']], submitscript]
         process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)

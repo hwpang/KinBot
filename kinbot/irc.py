@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 import numpy as np
 import os
 import copy
@@ -92,7 +73,7 @@ class IRC:
             return 0
         else:
             # ircs OK: well and product found
-            logging.info('\tIRCs succesful for {}'.format(instance_name))
+            logging.info('\tIRCs successful for {}'.format(instance_name))
             return st_pts[prod_hit]
 
     def problem_in_geom(self, geom):
@@ -123,10 +104,19 @@ class IRC:
         directions = ['Forward', 'Reverse']
         for i, direction in enumerate(directions):
             irc_name = '{}_IRC_{}'.format(instance_name, direction[0])
+            
+            # This boolean is false if the checkpoint file is available
+            # and true if no checkpoint file is found. 
+            # In the latter case, the geometry needs to be supplies to
+            # the gaussian calculation and the keywords 
+            # geom(AllCheck,NoKeepConstants) guess=Read need to be removed
+            start_from_geometry = 0
             if self.rxn.qc.qc == 'gauss':
                 # copy the chk file
                 if os.path.exists(instance_name + '.chk'):
                     copyfile(instance_name + '.chk', irc_name + '.chk')
+                else:
+                    start_from_geometry = 1
 
             if self.rxn.qc.qc == 'nwchem' and direction == 'Reverse':
                 direction = 'Backward'
@@ -135,12 +125,13 @@ class IRC:
             kwargs = self.rxn.qc.get_qc_arguments(irc_name,
                                                   self.rxn.species.mult,
                                                   self.rxn.species.charge,
-                                                  irc=direction.lower())
+                                                  irc=direction.lower(),
+                                                  start_form_geom=start_from_geometry)
             prod_kwargs = self.rxn.qc.get_qc_arguments(irc_name + '_prod', self.rxn.species.mult, self.rxn.species.charge)
             if self.rxn.qc.qc == 'gauss':
                 prod_kwargs['opt'] = 'CalcFC, Tight'
 
-            template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_irc.py.tpl'.format(qc=self.rxn.qc.qc))
+            template_file = pkg_resources.resource_filename('tpl', 'ase_{qc}_irc.tpl.py'.format(qc=self.rxn.qc.qc))
             template = open(template_file, 'r').read()
             template = template.format(label=irc_name,
                                        kwargs=kwargs,
