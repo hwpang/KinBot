@@ -77,6 +77,14 @@ class ReactionGenerator:
 
         while alldone:
             for index, instance in enumerate(self.species.reac_inst):
+                
+                
+                print(index)
+                print(self.species.reac_obj[index].instance_name)
+                print('TEST 1')
+                print(self.species.reac_ts_done[index])
+                print(self.species.reac_step[index])
+                
                 obj = self.species.reac_obj[index]
                 instance_name = obj.instance_name
 
@@ -87,7 +95,8 @@ class ReactionGenerator:
                     if status == 'error' or status == 'killed':
                         logging.info('\tRxn search failed (error or killed) for {}'.format(instance_name))
                         self.species.reac_ts_done[index] = -999
-                
+                print('TEST 2')
+                print(self.species.reac_ts_done[index])
                 if self.species.reac_ts_done[index] == 0: # ts search is ongoing
                     
                     if obj.scan == 0: #don't do a scan of a bond
@@ -98,8 +107,10 @@ class ReactionGenerator:
                             elif status == -1:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
-                        else: 
+                        else:
+                            print('carrying out reaction')
                             self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'])
+                            print('Finished carrying out reaction')
                     
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:

@@ -129,6 +129,8 @@ class Parameters:
             'break_bonds' : [],
             # form the following bonds
             'form_bonds' : [],
+            # Use the neural network to estimate the ts bond lengths
+            'neural_network' : 0,
 
             # QUANTUM CHEMISTRY INFO
             # Which quantum chemistry code to use

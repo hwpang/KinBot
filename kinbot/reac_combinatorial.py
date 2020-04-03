@@ -18,13 +18,17 @@
 ##                                               ##
 ###################################################
 import numpy as np
+import sys
 import copy
 import time
+import logging
 
 from kinbot import cheminfo
 from kinbot import constants
 from kinbot import reac_family
 from kinbot import geometry
+from kinbot import neural_network_io
+    
 
 class Combinatorial:
     """
@@ -76,40 +80,69 @@ class Combinatorial:
         Method to get the final values of the initial ts geometry
         1. All bonds that need to be broken
         2. All bonds that need to be formed
+        With the option 'neural_network', the bond distances will
+        be estimated using the convolutional neural network. 
         """
-        fdists = {}
-        fdists['CC'] = [1.60, 1.80, 2.16]
-        fdists['CO'] = [1.50, 1.96, 2.62]
-        fdists['CH'] = [1.20, 1.31, 1.50]
-        fdists['OO'] = [1.69, 1.78, 1.92]
-        fdists['HO'] = [0.99, 1.14, 1.38]
-        fdists['HH'] = [0.75, 0.90, 1.10]
-        fdists['CS'] = [2.18, 2.18, 2.18]
-        fdists['OS'] = [2.18, 2.18, 2.18]
-        fdists['HS'] = [1.60, 1.60, 1.60]
-        fdists['SS'] = [2.48, 2.48, 2.48]
+        if self.par.par['neural_network'] == 1:
+            if len(self.product_bonds) == 0:
+                # generate the product bond matrix
+                self.get_expected_products()
+            #cnn = neural_network.CNN()
+            #ts_bond_lengths = cnn.predict(self.species, self.product_bonds)
+            ts_bond_lengths = neural_network_io.predict(self.instance_name, self.species, self.product_bonds)
+            if self.prod[0]:
+                for pi in self.prod:
+                    i = pi[0]
+                    j = pi[1]
+                    if ts_bond_lengths[i][j] == 0.0:
+                        print(ts_bond_lengths)
+                        logging.error('No prediction for bond {} {}'.format(i, j))
+                    else:
+                        self.fvals.append([i, j, ts_bond_lengths[i][j]])
+            if self.reac[0]:
+                for ri in self.reac:
+                    i = ri[0]
+                    j = ri[1]
+                    if ts_bond_lengths[i][j] == 0.0:
+                        print(ts_bond_lengths)
+                        logging.error('No prediction for bond {} {}'.format(i, j))
+                    else:
+                        self.fvals.append([i, j, ts_bond_lengths[i][j]])
+            
+        else:
+            fdists = {}
+            fdists['CC'] = [1.60, 1.80, 2.16]
+            fdists['CO'] = [1.50, 1.96, 2.62]
+            fdists['CH'] = [1.20, 1.31, 1.50]
+            fdists['OO'] = [1.69, 1.78, 1.92]
+            fdists['HO'] = [0.99, 1.14, 1.38]
+            fdists['HH'] = [0.75, 0.90, 1.10]
+            fdists['CS'] = [2.18, 2.18, 2.18]
+            fdists['OS'] = [2.18, 2.18, 2.18]
+            fdists['HS'] = [1.60, 1.60, 1.60]
+            fdists['SS'] = [2.48, 2.48, 2.48]
 
-        if self.prod[0]:
-            for pi in self.prod:
-                i = pi[0]
-                j = pi[1]
-                syms = ''.join(sorted(self.species.atom[i]+self.species.atom[j]))
-                if self.species.bond[i][j] == 0:
-                    fdist = constants.st_bond[syms]
-                    if syms in fdists:
-                        fdist = list(reversed(fdists[syms]))[self.position]
-                    self.fvals.append([i, j, fdist])
+            if self.prod[0]:
+                for pi in self.prod:
+                    i = pi[0]
+                    j = pi[1]
+                    syms = ''.join(sorted(self.species.atom[i]+self.species.atom[j]))
+                    if self.species.bond[i][j] == 0:
+                        fdist = constants.st_bond[syms]
+                        if syms in fdists:
+                            fdist = list(reversed(fdists[syms]))[self.position]
+                        self.fvals.append([i, j, fdist])
 
-        if self.reac[0]:
-            for ri in self.reac:
-                i = ri[0]
-                j = ri[1]
-                syms = ''.join(sorted(self.species.atom[i]+self.species.atom[j]))
-                if self.species.bond[i][j] == 1:
-                    fdist = constants.st_bond[syms]
-                    if syms in fdists:
-                        fdist = fdists[syms][self.position]
-                    self.fvals.append([i, j, fdist])
+            if self.reac[0]:
+                for ri in self.reac:
+                    i = ri[0]
+                    j = ri[1]
+                    syms = ''.join(sorted(self.species.atom[i]+self.species.atom[j]))
+                    if self.species.bond[i][j] == 1:
+                        fdist = constants.st_bond[syms]
+                        if syms in fdists:
+                            fdist = fdists[syms][self.position]
+                        self.fvals.append([i, j, fdist])
 
     def get_constraints(self,step, geom):
         """
@@ -156,21 +189,21 @@ class Combinatorial:
         """
         Make smiles and inchis of the expected products
         """
-        self.product_bond = np.zeros((self.species.natom, self.species.natom))
+        self.product_bonds = np.zeros((self.species.natom, self.species.natom)).astype(int)
         for i in range(self.species.natom - 1):
             for j in range(i + 1, self.species.natom):
                 if [i, j] in self.reac or [j, i] in self.reac:
-                    self.product_bond[i][j] = self.species.bond[i][j] - 1
+                    self.product_bonds[i][j] = self.species.bond[i][j] - 1
                 elif [i, j] in self.prod or [j, i] in self.prod:
-                    self.product_bond[i][j] = self.species.bond[i][j] + 1
+                    self.product_bonds[i][j] = self.species.bond[i][j] + 1
                 else:
-                    self.product_bond[i][j] = self.species.bond[i][j]
-                self.product_bond[j][i] = self.product_bond[i][j]
-        rdmol, smi = cheminfo.create_rdkit_mol(self.product_bond, self.species.atom)
-        self.prod_smi = smi.split('.')
-        self.prod_inchi = []
-        for smi in self.prod_smi:
-            self.prod_inchi.append(cheminfo.create_inchi_from_smi(smi))
+                    self.product_bonds[i][j] = self.species.bond[i][j]
+                self.product_bonds[j][i] = self.product_bonds[i][j]
+        #rdmol, smi = cheminfo.create_rdkit_mol(self.product_bonds, self.species.atom)
+        #self.prod_smi = smi.split('.')
+        #self.prod_inchi = []
+        #for smi in self.prod_smi:
+        #    self.prod_inchi.append(cheminfo.create_inchi_from_smi(smi))
 
     def get_final_inchis(self):
         inchis = []
