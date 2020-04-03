@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 import numpy as np
 import copy
 import time
@@ -105,11 +86,18 @@ class IntraOHMigration:
                     constraint.append(self.instance[dih+i] + 1)
                 release.append(constraint)
             
-            fval = 2.0
-            constraint = [self.instance[0] + 1,self.instance[-1] + 1,fval]
+            # forward case
+            if self.species.atom[self.instance[0]] == 'C':
+                fval1 = 2.0
+                fval2 = 1.7
+            else:
+                fval1 = 1.7 
+                fval2 = 2.0
+
+            constraint = [self.instance[0] + 1,self.instance[-1] + 1, fval1]
             change.append(constraint)
 
-            constraint = [self.instance[-2] + 1,self.instance[-1] + 1,fval]
+            constraint = [self.instance[-2] + 1,self.instance[-1] + 1, fval2]
             change.append(constraint)
             
         #remove the bonds from the fix if they are in another constaint

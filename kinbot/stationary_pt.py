@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 from __future__ import print_function, division
 import sys
 import os
@@ -142,7 +123,6 @@ class StationaryPoint:
             for j in range(self.natom):
                 self.dist[i][j] = np.linalg.norm(self.geom[i] - self.geom[j])
         return 0 
-
 
     def bond_mx(self):
         """ 
@@ -275,7 +255,6 @@ class StationaryPoint:
 
         return 0
 
-
     def make_extra_bond(self, parts, maps):
         """
         Make an extra bond between two fragments.
@@ -300,25 +279,26 @@ class StationaryPoint:
 
         return 0
 
-
     def calc_multiplicity(self, atomlist):
         """ 
-        Calculate the multiplicity based on atom types.
-        Returns the lowest multiplicity possible, i.e., singlet or dublet,
-        Gaussian style.
+        1 = singlet, 2 = doublet, 3 = triplet, etc.
         """
 
         if all([element == 'O' for element in atomlist]):
             return 3 # O and O2 are triplet
         if len(atomlist) == 1 and atomlist[0] == 'C':
-            return 3 # C atom is triplet?
+            return 3 # C atom is triplet
+
+        atomC = np.char.count(atomlist, 'C')
+        atomH = np.char.count(atomlist, 'H')
+        if len(atomlist) == 3 and np.sum(atomC) == 1 and np.sum(atomH) == 2:
+            return 2 # CH2
 
         mult = 0
         for element in atomlist:
             mult += constants.st_bond[element]
 
         return 1 + mult % 2
-
 
     def start_multi_molecular(self):
         """
@@ -356,7 +336,11 @@ class StationaryPoint:
 
                 if not bool and len(mols) == 0:
                     #the bond matrix corresponds to one molecule only
-                    self.calc_chemid()
+                    try:
+                        delattr(self, 'cycle_chain')
+                    except AttributeError:
+                        pass
+                    self.characterize(0)  
                     self.name = str(self.chemid)
                     mols.append(self)
                     break
@@ -365,7 +349,7 @@ class StationaryPoint:
                 atomi = atomlist[np.where(np.asarray(fragi) == 1)]
                 multi = self.calc_multiplicity(atomi)
                 chargei = self.charge # todo
-                moli = StationaryPoint('prod_%i'%(len(mols)+1),chargei,multi,atom=atomi,natom=natomi,geom=geomi)
+                moli = StationaryPoint('prod_%i'%(len(mols)+1), chargei, multi, atom=atomi, natom=natomi, geom=geomi)
                 moli.characterize(0)  # dimer is not allowed
                 moli.calc_chemid()
                 moli.name = str(moli.chemid)
@@ -384,7 +368,6 @@ class StationaryPoint:
                     break
 
         return mols, maps
-
 
     def extract_next_mol(self, natom, bond):
         """
@@ -445,7 +428,6 @@ class StationaryPoint:
         else:
             return 0, [abs(si) for si in status]
 
-
     def find_cycle(self):
         """
         Find all the cycles in a molecule, if any
@@ -456,12 +438,11 @@ class StationaryPoint:
         The search is halted before reaching natoms if a certain morif length 
         does not give any hit
 
-
         TODO: leave all the leaves of the graph out for the search, i.e.
         the atoms that only have neighbor, as they never participate in a cycle
 
-        The cycles are keps in the cycle_chain list, which is a list of lists
-        Its lists contain the atom indices participating in each cycle.
+        The cycles are kept in the cycle_chain list, which is a list of lists
+        These lists contain the atom indices participating in each cycle.
 
         In the case of fused cycles, keep all the possible cycles (e.g. two fused
         rings lead to three cycles, and they are all defined in the cycle_chain
@@ -470,7 +451,7 @@ class StationaryPoint:
         self.cycle_chain = [] #list of the cycles
         self.cycle = [0 for i in range(self.natom)] # 0 if atom is not in cycle, 1 otherwise
 
-        for cycle_size in range(3,self.natom+1):
+        for cycle_size in range(3, self.natom + 1):
             motif = ['X' for i in range(cycle_size)]
             instances = find_motif.start_motif(motif, self.natom, self.bond, self.atom, -1, [[k] for k in range(self.natom)])
             if len(instances) == 0:
@@ -487,7 +468,6 @@ class StationaryPoint:
                         for at in ins:
                             self.cycle[at] = 1
         return 0
-
 
     def calc_chemid(self):
         """ 
@@ -507,7 +487,6 @@ class StationaryPoint:
         self.chemid += self.mult
 
         return 0
-                                                                                                
                                                                                                                         
     def start_id(self, i):
         """ 
@@ -524,10 +503,8 @@ class StationaryPoint:
         # a, visit = self.calc_atomid(visit, depth, i, atomid, natom, atom)
 
         # self.atomid[i] = a
-
         
         return 0
-                                
                                 
     def calc_atomid(self, visit, depth, i, atomid):
         """ Caclulate chemical ID for a given atom. """        
@@ -554,14 +531,14 @@ class StationaryPoint:
 
         return atomid, visit
 
-    
     def find_dihedral(self): 
         """ 
         Identify unique rotatable bonds in the structure 
         No rotation around ring bonds and double and triple bonds.
         """
+        
         self.calc_chemid()
-        if not hasattr(self,'cycle_chain'):
+        if not hasattr(self, 'cycle_chain'):
             self.find_cycle()
         if len(self.bonds) == 0:
             self.bonds = [self.bond]
@@ -590,14 +567,12 @@ class StationaryPoint:
 
         return 0
 
-
     def find_conf_dihedral(self):
         """
         Just keep those rotatable bonds that are needed for conformer search.
         This way we exclude things like methyl groups, t-butyl groups, etc.            
         The result is stored in self.conf_dihed.
         """
-        
         
         self.find_dihedral()
         self.conf_dihed = []
@@ -617,7 +592,6 @@ class StationaryPoint:
                     elif self.atomid[i] != base: 
                         dihed_sideb.append(self.dihed[rotbond][:])
                         break
-                
                         
         for rotbond in range(len(self.dihed)):
             start = 0
@@ -638,7 +612,6 @@ class StationaryPoint:
                 if dihed_sideb[b] == dihed_sidec[c]: self.conf_dihed.append(dihed_sideb[b][:])
                 
         return 0
-                
                 
     def find_atom_eqv(self):
         """
@@ -663,8 +636,7 @@ class StationaryPoint:
         
         return 0
 
-
-    def rigid_along_path(self,atomi, atomj):
+    def rigid_along_path(self, atomi, atomj):
         """
         Method finds the shortest path between two atoms and checks if any atom along that
         pathway is rigid. An atom is rigid if it is in a cycle or is doubly bonded to another atom
@@ -696,7 +668,6 @@ class StationaryPoint:
                                     return 1
                     return 0
         return 0
-
 
 def main():
     """

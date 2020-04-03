@@ -52,6 +52,7 @@ try:
             break
     mol.positions = geom
     """
+    #Positions (geom) updated in ase/ases/io/gaussian.py code
     db = connect('{working_dir}/kinbot.db')
     db.write(mol, name = label, data = {{'energy': e,'status' : 'normal'}})
 except RuntimeError: 

@@ -1,22 +1,3 @@
-###################################################
-##                                               ##
-## This file is part of the KinBot code v2.0     ##
-##                                               ##
-## The contents are covered by the terms of the  ##
-## BSD 3-clause license included in the LICENSE  ##
-## file, found at the root.                      ##
-##                                               ##
-## Copyright 2018 National Technology &          ##
-## Engineering Solutions of Sandia, LLC (NTESS). ##
-## Under the terms of Contract DE-NA0003525 with ##
-## NTESS, the U.S. Government retains certain    ##
-## rights to this software.                      ##
-##                                               ##
-## Authors:                                      ##
-##   Judit Zador                                 ##
-##   Ruben Van de Vijver                         ##
-##                                               ##
-###################################################
 from __future__ import division
 import random
 import time
@@ -325,6 +306,8 @@ class Conformers:
                 self.conf_status.append(-1)
         status = self.conf_status
 
+        lowest_conf = str(0).zfill(self.zf) # the index of the lowest conf, to be updated as we go
+
         while 1:
             # check if conformational search is finished
             for i, si in enumerate(status):
@@ -347,19 +330,21 @@ class Conformers:
                         final_geoms.append(geom)
                         energies.append(energy)
                         if energy < lowest_energy:
+                            lowest_conf = str(ci).zfill(self.zf) 
                             lowest_energy = energy
                             lowest_e_geom = geom
                     else:
                         energies.append(0.)
                         final_geoms.append(np.zeros((self.species.natom, 3)))
-
+               
                 self.write_profile(status, final_geoms, energies)
-                return 1, lowest_e_geom
+                return 1, lowest_conf, lowest_e_geom, lowest_energy
+
             else:
                 if wait:
                     time.sleep(1)
                 else:
-                    return 0, np.zeros((self.species.natom, 3))
+                    return 0, lowest_conf, np.zeros((self.species.natom, 3)), self.species.energy
 
     def write_profile(self, status, final_geoms, energies, ring=0):
         """
