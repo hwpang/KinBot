@@ -96,13 +96,7 @@ class ReactionGenerator:
                                 logging.info('\tRxn search failed for {}'.format(instance_name))
                                 self.species.reac_ts_done[index] = -999
                         else:
-<<<<<<< HEAD
-                            print('carrying out reaction')
-=======
->>>>>>> 4c995154208d37b2bd2ee0f647975987f575c44d
                             self.species.reac_step[index] = reac_family.carry_out_reaction(obj, self.species.reac_step[index], self.par.par['qc_command'])
-                            print('Finished carrying out reaction')
-                    
                     else: # do a bond scan
                         if self.species.reac_step[index] == self.par.par['scan_step'] + 1:
                             status = self.qc.get_qc_freq(instance_name, self.species.natom)[0]

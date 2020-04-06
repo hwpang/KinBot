@@ -8,6 +8,8 @@ import logging
 
 from kinbot import bond_combinations
 from kinbot import find_motif
+from kinbot import neural_network_io
+
 from kinbot.reac_Cyclic_Ether_Formation import CyclicEtherFormation
 from kinbot.reac_Diels_alder_addition import DielsAlder
 from kinbot.reac_Intra_Diels_alder_R import IntraDielsAlder
@@ -2228,4 +2230,13 @@ class ReactionFinder:
                 self.species.reac_obj.append(Combinatorial(self.species,self.qc,self.par,reac_list[i],name))
             else:
                 self.species.reac_name.append(0)
+        # predict the TS bond lengths and read in the results:
+        if self.par.par['neural_network'] == 1:
+            neural_network_io.predict()
+        
+        for i in range(len(reac_list)):
+            if reac_id == 'combinatorial':
+                self.species.reac_obj[i].get_final_vals()
+                print(self.species.reac_obj[i].fvals)
+
         return 0

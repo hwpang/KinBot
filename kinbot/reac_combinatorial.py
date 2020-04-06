@@ -17,6 +17,8 @@ class Combinatorial:
     """
 
     def __init__(self,species,qc,par,instance,instance_name):
+        #name of the reaction
+        self.instance_name = instance_name
         #st_pt of the reactant
         self.species = species
         #st_pt of the ts
@@ -25,7 +27,7 @@ class Combinatorial:
         self.products = []
         #bond matrix of the products
         self.product_bonds = [] 
-        
+
         #optimization objects
         self.ts_opt = None
         self.prod_opt = []
@@ -42,19 +44,19 @@ class Combinatorial:
         # and late transition states
         self.position = instance[3]
         self.fvals = []
-        self.get_final_vals()
         
-        #name of the reaction
-        self.instance_name = instance_name
-        
+        # generate the expected products species
+        self.get_expected_products()
+        # create the neural network input files
+        if self.par.par['neural_network'] == 1:
+            neural_network_io.write_cnn_input(self)
+
         #maximum number of steps for this reaction family
         self.max_step = 20
         #do a scan?
         self.scan = 0
         #skip the first 12 steps in case the instance has a length of 3?
         self.skip = 0
-        
-        self.get_expected_products()
 
     def get_final_vals(self):
         """
@@ -65,12 +67,11 @@ class Combinatorial:
         be estimated using the convolutional neural network. 
         """
         if self.par.par['neural_network'] == 1:
-            if len(self.product_bonds) == 0:
-                # generate the product bond matrix
-                self.get_expected_products()
             #cnn = neural_network.CNN()
             #ts_bond_lengths = cnn.predict(self.species, self.product_bonds)
-            ts_bond_lengths = neural_network_io.predict(self.instance_name, self.species, self.product_bonds)
+            
+            ts_bond_lengths = neural_network_io.get_cnn_results(self)
+            
             if self.prod[0]:
                 for pi in self.prod:
                     i = pi[0]
